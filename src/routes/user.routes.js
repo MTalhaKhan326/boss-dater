@@ -29,7 +29,12 @@ const {
   showLatestUser,
   showNearByUser,
  showRecentlyActiveUser,
+ getUserSearchById,
+ getUserSearches,
+ saveUserSearch,
+ deleteUserSearchById
 } = require("../controllers/user.controller");
+
 const { matchUser } = require("../controllers/matchMaking.controller");
 const restrictTo = require("../middlewares/authorization");
 const userRouter = express.Router();
@@ -79,5 +84,16 @@ userRouter.route('/test-hello').get(authJwt, function(req,res) {
 userRouter
   .route("/users-who-viewed-me")
   .get(authJwt, getListOfAllUsersWhoViewedMe);
+
+
+
+  
+userRouter.route("/save-user-search").post(authJwt, saveUserSearch);
+userRouter.route("/get-user-searches").get(authJwt, getUserSearches);
+userRouter.route("/save-user-search/:id").post(authJwt, saveUserSearch);
+userRouter.route("/get-single-user-search/:id").get(authJwt, getUserSearchById);
+userRouter.route("/delete-user-search/:id").delete(authJwt, deleteUserSearchById);
+
+
 
 module.exports = userRouter;

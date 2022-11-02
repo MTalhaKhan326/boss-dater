@@ -21,6 +21,7 @@ const {
 } = require("../models");
 const messages = require("../utils/constants");
 const haversine = require("haversine-distance");
+const {getCommonWhereCondition, getUserPreferenceCondition} =  require('./user.controller');
 
 // route of this api is in user routes //
 
@@ -30,20 +31,26 @@ exports.matchUser = catchAsync(async (req, res, next) => {
     let preference = await req.user.getUserPreference();
     let profile = await req.user.getUserProfile();
     let weightOnUsers = null;
+    
+    let where = await getCommonWhereCondition(req,{
+      profileCompletionPercentage: 100,
+      [Op.not]: {
+        gender: req.user.gender,
+      },
+    isDisabled: false,
+  })
+
+  const prefrenceWhere = await getUserPreferenceCondition(req)
 
     let users = await User.findAll({
-      where: {
-        profileCompletionPercentage: 100,
-        [Op.not]: {
-          gender: req.user.gender,
-        },
-        isDisabled: false,
-      },
+      where: where,
       order: [["id", "DESC"]],
       include: [
         "UserPhotos",
         {
           model: UserProfile,
+          required:true,
+          where: prefrenceWhere,
           include: [ 
             {
               model: RelationshipStatus,
@@ -202,6 +209,7 @@ exports.matchUser = catchAsync(async (req, res, next) => {
       data: weightOnUsers,
     });
   } catch (error) {
+    console.log(' error.message error.message', error.message)
     res.status(500).send({
       message: error.message,
     });

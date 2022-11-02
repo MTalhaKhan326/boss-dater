@@ -1,6 +1,7 @@
 const User = require("../models/User.model");
 const Report = require("../models/Report.model");
 const Block = require("../models/Block.model");
+
 const Sequelize = require("sequelize");
 const catchAsync = require("../utils/catchAsync");
 const APIError = require("../utils/APIError");
@@ -19,15 +20,136 @@ const RelationshipStatus = require("../models/RelationshipStatus.model");
 const UserTag = require("../models/UserTag.model");
 const Tag = require("../models/Tag.model");
 const View = require("../models/View.model");
+const UserSearch = require("../models/UserSearch.model");
 const UserFcmTokens = require("../models/UserFcmToken.model");
 const { sendUnscheduledNotification } = require("../utils/sendNotification");
 const haversine = require('haversine')
-
 const { BOOLEAN } = require("sequelize");
 const { loggers } = require("winston");
 const { Pool, Client } = require('pg')
+ const getCommonWhereCondition= async(req, where = {})=>{
+  
+  let  blocks = await Block.findAll(({
+    attributes:['against'],
+    from : req.user.id
+  }))
+
+  let  reports = await Report.findAll(({
+    attributes:['against'],
+    from : req.user.id
+  }))
+  
+
+  if(blocks  || reports){
+
+    if(blocks)
+      blocks =blocks?.map(u => u.get("against"))
+      else{
+        blocks =[]
+      }
+    if(reports)
+       reports =reports?.map(u => u.get("against"))
+      else
+      reports = []
 
 
+      const blocked =  [...blocks, ...reports]
+    if(blocked){
+      where.id={
+        [Op.notIn]: blocked?blocked:[]
+      }
+    }
+
+    return where
+  }else{
+    return null
+  }
+}
+
+const  getUserPreferenceCondition = async(req, where = {})=>{
+
+  let activeUserSearch =await  UserSearch.findOne({
+    isActive: true,
+    userId: req.user.id,
+  })
+  if(activeUserSearch){
+    // if(activeUserSearch.minAge){
+    //   where.minAge={
+    //       [Op.gt]: activeUserSearch.minAge
+    //     }
+    // }
+    // if(activeUserSearch.maxAge){
+    //   where.height={
+    //       [Op.lt]: activeUserSearch.maxAge
+    //     }
+    // }
+
+    if(activeUserSearch.minHeight){
+      where.height={
+          [Op.gt]: activeUserSearch.minHeight
+        }
+    }
+
+
+    if(activeUserSearch.maxHeight){
+      where.height={
+          [Op.lt]: activeUserSearch.maxHeight
+        }
+    }
+
+    if(activeUserSearch.jobTitle && activeUserSearch.jobTitle != ''){
+      where.jobTitle={
+        [Op.like]: `%${activeUserSearch.jobTitle}%`
+        }
+    }
+
+    if(activeUserSearch.occupations.length>0){
+      where.occupationId={
+        [Op.in]: activeUserSearch.occupations
+      }
+    }
+
+    if(activeUserSearch.childrenIds.length>0){
+      where.childrenId={
+        [Op.in]: activeUserSearch.childrenIds
+      }
+    }
+
+    if(activeUserSearch.educationIds.length>0){
+      where.educationId={
+        [Op.in]: activeUserSearch.educationIds
+      }
+    }
+
+
+    if(activeUserSearch.heirTypeIds.length>0){
+      where.hairColorId={
+        [Op.in]: activeUserSearch.heirTypeIds
+      }
+    }
+
+
+    if(activeUserSearch.relationshipStatusIds.length>0){
+      where.relationshipStatusId={
+        [Op.in]: activeUserSearch.relationshipStatusIds
+      }
+    }
+
+    // if(activeUserSearch.showMemberSeekengIds.length>0){
+    //   where.id={
+    //     [Op.in]: activeUserSearch.showMemberSeekengIds
+    //   }
+    // }
+    console.log('useruseruser-->111', where)
+    return where 
+
+  }
+ 
+}
+
+
+exports.getCommonWhereCondition = getCommonWhereCondition;
+exports.getUserPreferenceCondition = getUserPreferenceCondition;
 
 
 exports.index = catchAsync(async (req, res, next) => {
@@ -1136,20 +1258,32 @@ const { Op } = require("sequelize");
 const { UserPhoto } = require("../models");
 
 exports.showLatestUser = async (req, res, next) => {
+
+  
+  let where = await getCommonWhereCondition(req,  {
+    // profileCompletionPercentage: 25,
+    [Op.not]: {
+      gender: req.user.gender,
+    },
+  isDisabled: false,
+})
+const includes = [
+  {
+    model:UserPhoto
+  }]
+const prefrenceWhere = await getUserPreferenceCondition(req)
+  if(prefrenceWhere){
+    includes.push( {
+      model:UserProfile,
+      where : prefrenceWhere,
+      required:true
+    },)
+  }
   const user = await User.findAll(
     {
-      where: {
-        // profileCompletionPercentage: 25,
-        [Op.not]: {
-          gender: req.user.gender,
-        },
-        isDisabled: false,
-      },
+      where: where,
       order: [["id", "DESC"]],
-      include: [
-        {
-          model:UserPhoto
-        }]
+      include: includes
       
     }
   );
@@ -1284,9 +1418,26 @@ exports.showNearByUser = async (req, res, next) => {
       ]
     })
 
+    let where = await getCommonWhereCondition(req, {
+      isDisabled: false,
+    })
+   
+    const includes = [
+ 
+      {
+        model:UserPhoto
+      }]
+    let wherePreference = {}
+    const prefrenceWhere = await getUserPreferenceCondition(req)
+      if(prefrenceWhere){
+        wherePreference = {...wherePreference, ...prefrenceWhere}
+      }
+      
     let users = await User.findAll({
+      where:where,
       include: [
         {
+          where: wherePreference,
           model: UserProfile,
           include: [
             {
@@ -1352,25 +1503,41 @@ exports.showNearByUser = async (req, res, next) => {
     return next(new APIError(error, status.BAD_REQUEST));
   }
 };
+
+
 exports.showRecentlyActiveUser = async (req, res, next) => {
+
+ 
+try{
+
+  const prefrenceWhere = await getUserPreferenceCondition(req)
+
+  let where = await getCommonWhereCondition(req,  {
+    // profileCompletionPercentage: 25,
+    [Op.not]: {
+      gender: req.user.gender,
+    },
+    isDisabled: false,
+  })
+
+
   const user = await User.findAll(
     {
-      where: {
-        // profileCompletionPercentage: 25,
-        [Op.not]: {
-          gender: req.user.gender,
-        },
-        isDisabled: false,
-      },
+      where:where,
       order: [["id", "DESC"]],
       include: [
+        {
+          model: UserProfile,
+          required:true,
+          where: prefrenceWhere
+        },
         {
           model:UserPhoto
         }]
     }
   );
 
-  try {
+  
     await User.update(
       { showRecentlyActiveUser: !user.showRecentlyActiveUser },
       {
@@ -1386,5 +1553,146 @@ exports.showRecentlyActiveUser = async (req, res, next) => {
   } catch (error) {
     console.log("error is", error);
     return next(new APIError(error, status.BAD_REQUEST));
+  }
+};
+
+
+
+
+// Create user search here 
+//accepts post request with params
+
+exports.saveUserSearch = async (req, res, next) => {
+  try {
+    console.log('req.bodyreq.body',req.body)
+    if(req.params.id){
+      const userSearchExists = await UserSearch.findOne({
+        where:{
+          userId: req.user.id,
+          id: req.params.id
+        }})
+
+      if (!userSearchExists) {
+        throw new Error("User Search not found");
+      }else{
+
+        await UserSearch.update(
+          { ...userSearchExists, ...req.body},
+          {
+            where: {
+              id: req.params.id,
+            },
+          }
+        );
+        const  updatedUser = await UserSearch.findByPk(req.params.id);
+        res.status(200).send({
+          status: "success",
+          messages:"Saved search updated successfully",
+          data: updatedUser,
+        });
+      }
+
+    }else{
+
+      const userSearchExists = await UserSearch.findOne({
+        where:{
+          userId: req.user.id,
+          searchName: req.body.searchName
+        }
+      });
+      if (userSearchExists) {
+        throw new Error("You are using duplicate search name.");
+      }else{
+
+        const createObject = {...req.body, userId: req.user.id };
+        const searchObject = await UserSearch.create(createObject);
+        res.status(200).send({
+          status: "success",
+          messages:"Saved search created successfully",
+          data: searchObject,
+        });
+      }
+    }
+  } catch (error) {
+    return next(new APIError(error.message, status.BAD_REQUEST));
+  }
+};
+
+
+
+// get user search here 
+//get request to get all searches associated with user
+
+exports.getUserSearches = async (req, res, next) => {
+  try {
+    const searches = await UserSearch.findAll(
+      {
+        where: {
+          userId: req.user.id 
+        },
+        order: [["createdAt", "DESC"]]        
+      }
+    );
+
+    res.status(200).send({
+      status: "success",
+      data: searches,
+    });
+  } catch (error) {
+    return next(new APIError(error.message, status.BAD_REQUEST));
+  }
+};
+
+
+
+// get user search here 
+//get request to get all searches associated with user
+
+exports.getUserSearchById = async (req, res, next) => {
+  try {
+    
+    const userSearchExists = await UserSearch.findByPk(req.params.id);
+    if (!userSearchExists) {
+      throw new Error("User Search you want to get not found");
+    }
+
+    res.status(200).send({
+      status: "success",
+      data: userSearchExists,
+    });
+  } catch (error) {
+    return next(new APIError(error.message, status.BAD_REQUEST));
+  }
+};
+
+
+// delete users search here 
+
+exports.deleteUserSearchById = async (req, res, next) => {
+  try {
+    
+    if(req.params.id){
+      const userSearchExists = await UserSearch.findOne({
+        where:{
+          userId: req.user.id,
+          id: req.params.id
+        }})
+
+      if (!userSearchExists) {
+        throw new Error("User Search not found");
+      }else{
+        await UserSearch.destroy({where:{
+          id: req.params.id
+        }})
+        res.status(200).send({
+          status: "success",
+          messages:"Saved search deleted successfully"
+        });
+      }
+    }else{
+      throw new Error("UserSearch Id missing");
+    }
+  } catch (error) {
+    return next(new APIError(error.message, status.BAD_REQUEST));
   }
 };

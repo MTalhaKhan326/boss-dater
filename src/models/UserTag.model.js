@@ -10,18 +10,18 @@ UserTag.init(
     userPreferenceId: {
       type: DataTypes.INTEGER,
       allowNull: false,
-      references: {
-        model: "UserPreference",
-        key: "id",
-      },
+      // references: {
+      //   model: "UserPreference",
+      //   key: "id",
+      // },
     },
     tagId: {
       type: DataTypes.INTEGER,
       allowNull: false,
-      references: {
-        model: "Tag",
-        key: "id",
-      },
+      // references: {
+      //   model: "Tag",
+      //   key: "id",
+      // },
     },
 
   },

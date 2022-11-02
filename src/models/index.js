@@ -19,6 +19,7 @@ const Report = require("./Report.model");
 const Block = require("./Block.model");
 const Like = require("./Like.model");
 const View = require("./View.model");
+const UserSearch = require("./UserSearch.model");
 const UserFcmToken = require("./UserFcmToken.model");
 
 require("./associations");
@@ -46,4 +47,5 @@ module.exports = {
   Like,
   View,
   UserFcmToken,
+  UserSearch
 };

@@ -18,6 +18,7 @@ const Report = require("./Report.model");
 const Block = require("./Block.model");
 const Like = require("./Like.model");
 const View = require("./View.model");
+const UserSearch = require("./UserSearch.model");
 
 User.hasOne(UserProfile, {
   onDelete: "CASCADE",
@@ -236,3 +237,19 @@ Like.belongsTo(User, {
     allowNull: false,
   },
 });
+
+
+User.hasMany(UserSearch, {
+  as: "userSearches",
+  onDelete: "CASCADE",
+  foreignKey: "userId",
+});
+
+UserSearch.belongsTo(User, {
+  as:"user",
+  foreignKey: {
+    name: "userId",
+    allowNull: false,
+  },
+});
+
