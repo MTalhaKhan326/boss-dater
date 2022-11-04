@@ -18,6 +18,7 @@ const {
   UserTag,
   Tag,
   Block,
+  Like,
 } = require("../models");
 const messages = require("../utils/constants");
 const haversine = require("haversine-distance");
@@ -41,6 +42,20 @@ exports.matchUser = catchAsync(async (req, res, next) => {
   })
 
   const prefrenceWhere = await getUserPreferenceCondition(req)
+
+
+  let  likes = await Like.findAll(({
+    attributes:['to'],
+    from : req.user.id
+  }))
+  
+const likeList =likes?.map(u => u.get("to"))
+
+if(likeList && likeList.length>0){
+  where[Op.and]={
+    id :{[Op.notIn]: likeList }
+  }
+}
 
     let users = await User.findAll({
       where: where,

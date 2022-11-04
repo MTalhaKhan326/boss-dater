@@ -230,7 +230,6 @@ exports.reportUser = async (req, res, next) => {
 
 exports.likeUser = async (req, res, next) => {
   try {
-    console.log("TUSHAR_dev Like started")
     const userExists = await User.findByPk(req.params.id);
     if (!userExists) {
       throw new Error("User you want to like not found");
@@ -263,14 +262,28 @@ exports.likeUser = async (req, res, next) => {
         };
         sendUnscheduledNotification(notification_options);
       }
+
+      const match = await Like.findOne( {where:{
+        to: req.user.id,
+        from: parseInt(req.params.id),
+      }});
+
+      console.log("matchmatch",match)
+
       res.status(200).send({
         status: "success",
         data: likeObject,
+        itsMatch: (match?true: false)        
       });
     }
   } catch (error) {
     console.log("Error in Like",error)
-    return next(new APIError(error.message, status.BAD_REQUEST));
+    res.status(200).send({
+      status: status.BAD_REQUEST,
+      message: error.message     
+    });
+
+    //return next(new APIError(error.message, status.BAD_REQUEST));
   }
 };
 
@@ -1687,6 +1700,55 @@ exports.deleteUserSearchById = async (req, res, next) => {
         res.status(200).send({
           status: "success",
           messages:"Saved search deleted successfully"
+        });
+      }
+    }else{
+      throw new Error("UserSearch Id missing");
+    }
+  } catch (error) {
+    return next(new APIError(error.message, status.BAD_REQUEST));
+  }
+};
+
+
+
+// delete users search here 
+
+exports.activateUserSearchById = async (req, res, next) => {
+  try {
+    
+    if(req.params.id){
+      const userSearchExists = await UserSearch.findOne({
+        where:{
+          userId: req.user.id,
+          id: req.params.id
+        }})
+
+      if (!userSearchExists) {
+        throw new Error("User Search not found");
+      }else{
+        await UserSearch.update(
+          {
+            isActive : false
+          },
+          {
+            where:{
+              userId: req.user.id
+            }
+          })
+
+        await UserSearch.update(
+          {
+            isActive : !userSearchExists.isActive
+          },
+          {
+            where:{
+            id: req.params.id
+            }
+          })
+        res.status(200).send({
+          status: "success",
+          messages:"Saved search activated successfully"
         });
       }
     }else{
