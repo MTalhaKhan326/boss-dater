@@ -53,7 +53,7 @@ const createHairColorDropDown = async () => {
       name:"Black"
     },
     {
-      name:"Blond"
+      name:"Blonde"
     },
     {
       name:"Grey"

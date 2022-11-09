@@ -630,6 +630,35 @@ exports.verifyForgotPasswordCode = async (req, res, next) => {
   }
 };
 
+
+
+
+exports.sendPhoneVerification = async (req, res, next) => {
+  try {
+    const { phoneNumber } = req.body;
+    const user = await User.findOne({
+      where: {
+        phoneNumber,
+      },
+      include: [EmailVerificationToken],
+    });
+    if (!user)
+      return next(new APIError(messages.PHONE_NUMBER_NOT_FOUND, status.BAD_REQUEST));
+    const subject = messages.EMAIL_VERIFICATION;
+    const token = await user.generateEmailVerificationToken(user.id, 2);
+    //await sendVerificationEmail(user.email, subject, token);
+
+    res.status(status.CREATED).json({
+      status: messages.SUCCESS,
+      reset_token: token,
+    });
+  } catch (err) {
+    return next(new APIError(err.message, status.NOT_FOUND));
+  }
+};
+
+
+
 exports.sendEmailVerification = async (req, res, next) => {
   try {
     const { email } = req.body;

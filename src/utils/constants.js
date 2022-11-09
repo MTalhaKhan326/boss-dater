@@ -5,6 +5,7 @@ module.exports = messages = {
   //Auth Controller
   INCORRECT_EMAIL_OR_PASSWORD: "Incorrent Email or Password",
   EMAIL_NOT_FOUND: "No User found with the email address",
+  PHONE_NUMBER_NOT_FOUND: "No User found with the Phone Numbebr",
   INVALID_TOKEN: "Your reset password link is invalid or expired",
   TOKEN_MATCHED: "Your token is matched successfully",
   UPLOAD_IMAGE: "Not an image! Please upload only images.",
