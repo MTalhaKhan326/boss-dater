@@ -630,9 +630,6 @@ exports.verifyForgotPasswordCode = async (req, res, next) => {
   }
 };
 
-
-
-
 exports.sendPhoneVerification = async (req, res, next) => {
   try {
     const { phoneNumber } = req.body;
@@ -656,8 +653,6 @@ exports.sendPhoneVerification = async (req, res, next) => {
     return next(new APIError(err.message, status.NOT_FOUND));
   }
 };
-
-
 
 exports.sendEmailVerification = async (req, res, next) => {
   try {
@@ -758,6 +753,52 @@ exports.verifySignupEmailVerificationCode = async (req, res, next) => {
     res.status(status.OK).json({
       status: "success",
     });
+  } catch (err) {
+    return next(new APIError(messages.UNABLE_TO_VERIFY, status.NOT_FOUND));
+  }
+};
+
+exports.verifySignupPhoneVerificationCode = async (req, res, next) => {
+  try {
+    const { token } = req.body;
+    const hashedToken = User.createHashFromString(token);
+
+    const verification = await EmailVerificationToken.findOne({
+      where: {
+        token: hashedToken,
+      },
+    });
+    if (!verification)
+      return next(
+        new APIError(messages.CODE_NOT_VERIFIED, status.UNAUTHORIZED)
+      );
+
+    res.status(status.OK).json({
+      status: "success",
+    });
+  } catch (err) {
+    return next(new APIError(messages.UNABLE_TO_VERIFY, status.NOT_FOUND));
+  }
+};
+
+exports.verifyPhoneNumberUserNameExist = async (req, res, next) => {
+  try {
+    const { phoneNumber } = req.body;
+    const user = await User.findOne({
+      where: {
+        phoneNumber
+      },
+    });
+     
+   
+  if(user){
+      return next(new APIError(messages.PHONE_ALREADY_EXIST, status.NOT_ACCEPTABLE));
+  }else{
+    res.status(status.OK).json({
+      status: "success",
+    });
+  }
+
   } catch (err) {
     return next(new APIError(messages.UNABLE_TO_VERIFY, status.NOT_FOUND));
   }

@@ -2,7 +2,7 @@ const express = require("express");
 const { uploadFile } = require("../utils/fileUpload");
 const { checkDuplicateEmail } = require("../middlewares/verifySignUp");
 const {
-  checkAccountDisableOrDeletion,
+  checkAccountDisableOrDeletion
 } = require("../middlewares/checkDuplicate");
 const { authJwt } = require("../middlewares/authJwt");
 
@@ -23,12 +23,15 @@ const {
   signupEmailVerification,
   verifySignupEmailVerificationCode,
   updateForSocialLogin,
+  verifySignupPhoneVerificationCode,
+  verifyPhoneNumberExist,
+  verifyPhoneNumberUserNameExist
 } = require("../controllers/auth.controller");
 const { dropdown } = require("../controllers/dropdown.controller");
 const validateRequestSchema = require("../middlewares/validateRequestSchema");
 const {
   registerSchema,
-  loginSchema,
+  loginSchema
 } = require("../validation_schema/authorizationSchema");
 
 const authRouter = express.Router();
@@ -45,7 +48,9 @@ authRouter.route("/reset-password").post(resetPassword);
 authRouter.route("/google-login").post(googleLogin);
 authRouter.route("/facebook-login").post(facebookLogin);
 authRouter.route("/apple-login").post(appleLogin);
-authRouter.route("/update-social-login").post(authJwt,checkDuplicateEmail, updateForSocialLogin);
+authRouter
+  .route("/update-social-login")
+  .post(authJwt, checkDuplicateEmail, updateForSocialLogin);
 
 //phone number verification
 authRouter.route("/send-code").post(sendCode);
@@ -62,4 +67,11 @@ authRouter
 authRouter
   .route("/verify-signup-email-verification-code")
   .post(verifySignupEmailVerificationCode);
+
+authRouter
+  .route("/verify-signup-phone-verification-code")
+  .post(verifySignupPhoneVerificationCode);
+
+authRouter.route("/verify-phone-number-exist").post(verifyPhoneNumberUserNameExist);
+
 module.exports = authRouter;
