@@ -25,7 +25,8 @@ const {
   updateForSocialLogin,
   verifySignupPhoneVerificationCode,
   verifyPhoneNumberExist,
-  verifyPhoneNumberUserNameExist
+  verifyPhoneNumberUserNameExist,
+  logout
 } = require("../controllers/auth.controller");
 const { dropdown } = require("../controllers/dropdown.controller");
 const validateRequestSchema = require("../middlewares/validateRequestSchema");
@@ -73,5 +74,8 @@ authRouter
   .post(verifySignupPhoneVerificationCode);
 
 authRouter.route("/verify-phone-number-exist").post(verifyPhoneNumberUserNameExist);
+authRouter.route("/logout").post(authJwt, logout);
+
+
 
 module.exports = authRouter;

@@ -42,7 +42,7 @@ class User extends Model {
       await ForgotPasswordToken.create({
         token: hashedToken,
         expiresIn,
-        userId: user,
+        userId: user
       });
     }
 
@@ -74,7 +74,7 @@ class User extends Model {
       await EmailVerificationToken.create({
         token: hashedToken,
         expiresIn,
-        userId: user,
+        userId: user
       });
     }
 
@@ -86,88 +86,88 @@ User.init(
   {
     //user registration
     gender: {
-      type: DataTypes.STRING,
+      type: DataTypes.STRING
     },
     name: {
-      type: DataTypes.STRING,
+      type: DataTypes.STRING
     },
     phoneNumber: {
       type: DataTypes.STRING,
-      unique: true,
+      unique: true
     },
     email: {
       type: DataTypes.STRING,
-      unique: true,
+      unique: true
     },
     password: {
-      type: DataTypes.STRING,
+      type: DataTypes.STRING
     },
     birthDate: {
-      type: DataTypes.DATEONLY,
+      type: DataTypes.DATEONLY
     },
     isDisabled: {
       type: DataTypes.BOOLEAN,
-      defaultValue: false,
+      defaultValue: false
     },
     deviceToken: {
-      type: DataTypes.TEXT,
+      type: DataTypes.TEXT
     },
     onlineStatus: {
       type: DataTypes.BOOLEAN,
-      defaultValue: true,
+      defaultValue: true
     },
     showRecentLocation: {
       type: DataTypes.BOOLEAN,
-      defaultValue: true,
+      defaultValue: true
     },
     showInSearch: {
       type: DataTypes.BOOLEAN,
-      defaultValue: true,
+      defaultValue: true
     },
     showWhenViewSomeone: {
       type: DataTypes.BOOLEAN,
-      defaultValue: true,
+      defaultValue: true
     },
     showFavouritedOne: {
       type: DataTypes.BOOLEAN,
-      defaultValue: true,
+      defaultValue: true
     },
     joiningDate: {
       type: DataTypes.BOOLEAN,
-      defaultValue: true,
+      defaultValue: true
     },
     profileCompletionPercentage: {
       type: DataTypes.INTEGER,
-      defaultValue: 25,
+      defaultValue: 25
     },
     someoneSendMeMessage: {
       type: DataTypes.BOOLEAN,
-      defaultValue: true,
+      defaultValue: true
     },
     someoneFavouritedMe: {
       type: DataTypes.BOOLEAN,
-      defaultValue: true,
+      defaultValue: true
     },
     // create Identity screens (user preference)
 
     facebookId: {
       type: DataTypes.STRING,
       allowNull: true,
-      unique: true,
+      unique: true
     },
     googleId: {
       type: DataTypes.STRING,
       allowNull: true,
-      unique: true,
+      unique: true
     },
     appleId: {
       type: DataTypes.STRING,
       allowNull: true,
-      unique: true,
+      unique: true
     },
     showWhenViewSomeOne: {
       type: DataTypes.BOOLEAN,
-      defaultValue: true,
+      defaultValue: true
     },
     // roleId: {
     //   type: DataTypes.INTEGER,
@@ -189,18 +189,25 @@ User.init(
     //     key: "id",
     //   },
     // },
-
+    lastActiveTime: {
+      type: "TIMESTAMP",
+      allowNull: true
+    },
+    lastLocation: {
+      type: DataTypes.STRING,
+      allowNull: true
+    },
     emailVerifiedAt: {
-      type: DataTypes.DATE,
+      type: DataTypes.DATE
     },
     phoneVerifiedAt: {
-      type: DataTypes.DATE,
-    },
+      type: DataTypes.DATE
+    }
   },
   {
     sequelize,
     paranoid: true,
-    modelName: "User",
+    modelName: "User"
   }
 );
 

@@ -1,7 +1,6 @@
 const User = require("../models/User.model");
 const Report = require("../models/Report.model");
 const Block = require("../models/Block.model");
-
 const Sequelize = require("sequelize");
 const catchAsync = require("../utils/catchAsync");
 const APIError = require("../utils/APIError");
@@ -198,6 +197,50 @@ exports.blockUser = async (req, res, next) => {
   }
 };
 
+exports.sendPushNotification = async (req, res, next)=>{
+  console.log('req.body',req.user.id, req.body.data)
+  try {
+  let userFcmTokensOb = await User.findOne({
+    where: {
+      id: req.body.data.id,         
+    },
+  });
+  if (userFcmTokensOb) {
+
+    console.log('req?.body?.data?.profileImage',req?.body?.data?.profileImage )
+    let notification_options = {
+      regTokens: userFcmTokensOb.deviceToken,
+      notificationMsg: {
+        data: { 
+          token:req?.body?.data?.token,
+          screenName:req?.body?.data?.screenName,
+          name: req?.body?.data?.name,
+          thread: req?.body?.data?.thread,
+          profileImage:req?.body?.data?.profileImage,
+          id:req?.body?.data?.id.toString(),
+          senderId: req.user.id.toString()
+         },
+        notification: { 
+        title: req?.body?.data?.name, 
+        body:  req?.body?.data?.message.toString(),
+        image: 'https://bossdater.s3.eu-west-1.amazonaws.com/1668599368530rn_image_picker_lib_temp_643db690-cc12-4e79-9ba9-8c151041f6d1.jpg'
+      }
+      },
+  };
+   const result =  sendUnscheduledNotification(notification_options);
+   res.status(200).send({
+    status: "success",
+    data: result
+  });
+  }else{ 
+    throw new Error("User's FCM token not found");
+  }
+
+}catch (error){
+  return next(new APIError(error.message, status.BAD_REQUEST));
+}
+}
+
 exports.reportUser = async (req, res, next) => {
   try {
     const userExists = await User.findByPk(req.params.id);
@@ -240,27 +283,31 @@ exports.likeUser = async (req, res, next) => {
         to: parseInt(req.params.id),
       },
     };
-    const alreadyLiked = await Like.findOne(clause);
-    if (alreadyLiked) {
+    // const alreadyLiked = await Like.findOne(clause);
+    if (!userExists) { //alreadyLiked
       throw new Error(messages.ALREADY_LIKED);
     }else{
       const likeObject = await Like.create(clause.where);
-      let userFcmTokensOb = await UserFcmTokens.findAll({
+      let userFcmTokensOb = await User.findOne({
         where: {
-          userId: req.params.id,         },
+          id: req.params.id,        
+        },
       });
-      if (userFcmTokensOb.length) {
-        userFcmTokensOb = userFcmTokensOb.map(function (user) {
-          return user["fcmToken"];
-        });
+      if (userFcmTokensOb) {
+        // userFcmTokensOb = userFcmTokensOb.map(function (user) {
+        //   return user["fcmToken"];
+        // });
         let notification_options = {
-          regTokens: userFcmTokensOb,
-          notificationMsg: {
-            data: { title: title, message: description },
-            notification: { title: title, message: description },
-          },
-        };
-        sendUnscheduledNotification(notification_options);
+        regTokens: userFcmTokensOb.deviceToken,
+        notificationMsg: {
+          data: { 
+            screenName:'LikedUser'
+           },
+          notification: { title: 'LikedUser', body:  'User has liked you to express interest into your profile.' },
+        },
+    };
+      const result =  sendUnscheduledNotification(notification_options);
+      console.log("result",result)
       }
 
       const match = await Like.findOne( {where:{
@@ -1749,6 +1796,61 @@ exports.activateUserSearchById = async (req, res, next) => {
         res.status(200).send({
           status: "success",
           messages:"Saved search activated successfully"
+        });
+      }
+    }else{
+      throw new Error("UserSearch Id missing");
+    }
+  } catch (error) {
+    return next(new APIError(error.message, status.BAD_REQUEST));
+  }
+};
+
+
+
+
+
+
+// delete users search here 
+
+exports.getUserHistory = async (req, res, next) => {
+  try {
+    
+    if(req.params.id){
+      const userSearchExists = await User.findOne({
+        where:{
+          id: req.params.id
+        }})
+
+      if (!userSearchExists) {
+        throw new Error("User Search not found");
+      }else{
+        
+        const  data = { }
+        console.log('userSearchExists', userSearchExists)
+        data.createdAt = userSearchExists.createdAt
+
+        const theyViewed = await  View.findOne({
+            from: req.params.id, 
+            to : req.user.id
+        })
+        if(theyViewed){
+          data.theyViewed = true
+        }
+
+        const theyLiked = await Like.findOne({
+          from: req.params.id, 
+          to : req.user.id
+      })
+      if(theyLiked){
+        data.theyLiked = true
+      }
+      
+
+        res.status(200).send({
+          data : data ,
+          status: "success",
+
         });
       }
     }else{
