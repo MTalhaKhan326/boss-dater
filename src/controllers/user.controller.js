@@ -223,7 +223,7 @@ exports.sendPushNotification = async (req, res, next)=>{
         notification: { 
         title: req?.body?.data?.name, 
         body:  req?.body?.data?.message.toString(),
-        image: 'https://bossdater.s3.eu-west-1.amazonaws.com/1668599368530rn_image_picker_lib_temp_643db690-cc12-4e79-9ba9-8c151041f6d1.jpg'
+        image: req?.body?.data?.profileImage
       }
       },
   };

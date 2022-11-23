@@ -69,7 +69,7 @@ UserProfile.init(
       type: DataTypes.TEXT,
     },
     netWorth: {
-      type: DataTypes.STRING,
+      type: DataTypes.INTEGER,
     },
 
     //for women
