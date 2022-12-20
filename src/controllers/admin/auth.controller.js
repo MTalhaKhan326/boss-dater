@@ -17,6 +17,7 @@ const Email = require("../../utils/sendEmail")
 
 //Login User
 exports.login = catchAsync(async (req, res, next) => {
+  console.log("req.body.email",req.body.email)
   const user = await User.findOne({
     select: "*",
     where: {

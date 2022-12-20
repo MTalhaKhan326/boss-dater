@@ -48,17 +48,17 @@ UserProfile.init(
     //   }
     // },
     latitude: {
-      type: DataTypes.STRING,
+      type: DataTypes.FLOAT,
     },
     longitude: {
-      type: DataTypes.STRING,
+      type: DataTypes.FLOAT,
     },
     recentLatitude: {
-      type: DataTypes.STRING,
+      type: DataTypes.FLOAT,
       defaultValue: null,
     },
     recentLongitude: {
-      type: DataTypes.STRING,
+      type: DataTypes.FLOAT,
       defaultValue: null,
     },
     //for men

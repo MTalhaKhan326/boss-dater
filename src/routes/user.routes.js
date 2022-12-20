@@ -57,7 +57,7 @@ userRouter
   .route ('/show-recently-active-user')
   .get (authJwt, showRecentlyActiveUser);
 userRouter.route ('/').post (index);
-userRouter.route ('/getUsers').get (matchUser);
+userRouter.route ('/getUsers').get (authJwt, matchUser);
 userRouter.route ('/my-liked-users').get (authJwt, getListOfAllUsersLikedByMe);
 userRouter
   .route ('/users-who-like-me')

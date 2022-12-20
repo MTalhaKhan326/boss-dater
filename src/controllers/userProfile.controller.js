@@ -58,6 +58,7 @@ exports.createProfile = catchAsync(async (req, res) => {
     } = req.body;
   }
   const newParams = { ...params, ...male, ...female };
+  console.log("newParamsnewParamsnewParamsnewParams",newParams)
   try {
     await UserProfile.update(newParams, {
       where: {

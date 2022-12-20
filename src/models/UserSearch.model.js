@@ -10,44 +10,59 @@ UserSearch.init(
   {
     searchName: {
       type: DataTypes.TEXT,
-      allowNull: false,
+      allowNull: false
     },
     userId: {
       type: DataTypes.INTEGER,
-      allowNull: false,
+      allowNull: false
     },
     isActive: {
       type: DataTypes.BOOLEAN,
       allowNull: true,
-      defaultValue: false,
+      defaultValue: false
     },
 
     gps: {
       type: DataTypes.BOOLEAN,
       allowNull: true,
-      defaultValue: false,
+      defaultValue: false
     },
 
     otherLocation: {
       type: DataTypes.BOOLEAN,
       allowNull: true,
-      defaultValue: false,
+      defaultValue: false
+    },
+
+    otherLocationAddress: {
+      type: DataTypes.STRING,
+      allowNull: true
+    },
+
+    latitude: {
+      type: DataTypes.FLOAT,
+      allowNull: true
+    },
+
+    longitude: {
+      type: DataTypes.FLOAT,
+      allowNull: true
     },
 
     locationByCityName: {
       type: DataTypes.BOOLEAN,
       allowNull: true,
-      defaultValue: false,
+      defaultValue: false
     },
 
     occupations: {
-      type:  DataTypes.ARRAY(DataTypes.INTEGER),
-      allowNull: true,
+      type: DataTypes.ARRAY(DataTypes.INTEGER),
+      allowNull: true
     },
 
     jobTitle: {
       type: DataTypes.TEXT,
-      allowNull: true,
+      allowNull: true
     },
 
     minDistance: {
@@ -106,78 +121,75 @@ UserSearch.init(
     viewedMe: {
       type: DataTypes.BOOLEAN,
       allowNull: true,
-      defaultValue: false,
+      defaultValue: false
     },
     unViewed: {
       type: DataTypes.BOOLEAN,
       allowNull: true,
-      defaultValue: false,
+      defaultValue: false
     },
 
     favorited: {
       type: DataTypes.BOOLEAN,
       allowNull: true,
-      defaultValue: false,
+      defaultValue: false
     },
 
     favoritedMe: {
       type: DataTypes.BOOLEAN,
       allowNull: true,
-      defaultValue: false,
+      defaultValue: false
     },
 
     bodyTypesIds: {
-      type:  DataTypes.ARRAY(DataTypes.INTEGER),
-      allowNull: true,
+      type: DataTypes.ARRAY(DataTypes.INTEGER),
+      allowNull: true
     },
 
     heirTypeIds: {
-      type:  DataTypes.ARRAY(DataTypes.INTEGER),
-      allowNull: true,
+      type: DataTypes.ARRAY(DataTypes.INTEGER),
+      allowNull: true
     },
 
     relationshipStatusIds: {
-      type:  DataTypes.ARRAY(DataTypes.INTEGER),
-      allowNull: true,
+      type: DataTypes.ARRAY(DataTypes.INTEGER),
+      allowNull: true
     },
 
     educationIds: {
-      type:  DataTypes.ARRAY(DataTypes.INTEGER),
-      allowNull: true,
+      type: DataTypes.ARRAY(DataTypes.INTEGER),
+      allowNull: true
     },
 
-
     childrenIds: {
-      type:  DataTypes.ARRAY(DataTypes.INTEGER),
-      allowNull: true,
+      type: DataTypes.ARRAY(DataTypes.INTEGER),
+      allowNull: true
     },
 
     showMemberSeekengIds: {
-      type:  DataTypes.ARRAY(DataTypes.INTEGER),
-      allowNull: true,
+      type: DataTypes.ARRAY(DataTypes.INTEGER),
+      allowNull: true
     },
 
     doNotShowMemberSeekings: {
-      type:  DataTypes.ARRAY(DataTypes.INTEGER),
-      allowNull: true,
-    },
-    
+      type: DataTypes.ARRAY(DataTypes.INTEGER),
+      allowNull: true
+    }
   },
   {
     sequelize,
-    modelName: "UserSearch",
+    modelName: "UserSearch"
   }
 );
 
 module.exports = UserSearch;
 
-
 // {
 //   "gps":true,
 //   "otherLocation":true,
-//   "locationByCityName":true 
+//   "locationByCityName":true
 //   "occupations": [1,2],
-//   "jobTitle": "Software Egnineer", 
+//   "jobTitle": "Software Egnineer",
 //   "minDistance":10,
 //   "maxDistance":1001,
 //   "minHeight": 100,
@@ -190,7 +202,7 @@ module.exports = UserSearch;
 //   "educationIds":[3,4],
 //   "HairColor": [5,6],
 //   "bodyTypesIds": [3,6],
-  
+
 //   "showMemberSeekengIds":[1],
 //   "doNotShowMemberSeekings":[3]
 // }

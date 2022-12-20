@@ -22,134 +22,122 @@ const View = require("../models/View.model");
 const UserSearch = require("../models/UserSearch.model");
 const UserFcmTokens = require("../models/UserFcmToken.model");
 const { sendUnscheduledNotification } = require("../utils/sendNotification");
-const haversine = require('haversine')
+const haversine = require("haversine");
 const { BOOLEAN } = require("sequelize");
 const { loggers } = require("winston");
-const { Pool, Client } = require('pg')
- const getCommonWhereCondition= async(req, where = {})=>{
-  
-  let  blocks = await Block.findAll(({
-    attributes:['against'],
-    from : req.user.id
-  }))
-
-  let  reports = await Report.findAll(({
-    attributes:['against'],
-    from : req.user.id
-  }))
-  
-
-  if(blocks  || reports){
-
-    if(blocks)
-      blocks =blocks?.map(u => u.get("against"))
-      else{
-        blocks =[]
+const { Pool, Client } = require("pg");
+const getCommonWhereCondition = async (req, where = {}) => {
+  let blocks = await Block.findAll({
+    attributes: ["against"],
+    where: {
+     
+      from: req.user.id
       }
-    if(reports)
-       reports =reports?.map(u => u.get("against"))
-      else
-      reports = []
+  });
 
+  let reports = await Report.findAll({
+    attributes: ["against"],
+    where: {
+      from: req.user.id
+    }
+  });
 
-      const blocked =  [...blocks, ...reports]
-    if(blocked){
-      where.id={
-        [Op.notIn]: blocked?blocked:[]
-      }
+  if (blocks || reports) {
+    if (blocks) blocks = blocks?.map((u) => u.get("against"));
+    else {
+      blocks = [];
+    }
+    if (reports) reports = reports?.map((u) => u.get("against"));
+    else reports = [];
+
+    const blocked = [...blocks, ...reports];
+    if (blocked) {
+      where.id = {
+        [Op.notIn]: blocked ? blocked : []
+      };
     }
 
-    return where
-  }else{
-    return null
+    return where;
+  } else {
+    return null;
   }
-}
+};
 
-const  getUserPreferenceCondition = async(req, where = {})=>{
+const getUserPreferenceCondition = async (req, activeUserSearch = null) => {
+  const where = {};
 
-  let activeUserSearch =await  UserSearch.findOne({
-    isActive: true,
-    userId: req.user.id,
-  })
-  if(activeUserSearch){
-    // if(activeUserSearch.minAge){
-    //   where.minAge={
-    //       [Op.gt]: activeUserSearch.minAge
-    //     }
-    // }
-    // if(activeUserSearch.maxAge){
-    //   where.height={
-    //       [Op.lt]: activeUserSearch.maxAge
-    //     }
-    // }
+  if (!activeUserSearch) {
+    activeUserSearch = await UserSearch.findOne({
+      isActive: true,
+      userId: req.user.id
+    });
+  }
 
-    if(activeUserSearch.minHeight){
-      where.height={
-          [Op.gt]: activeUserSearch.minHeight
-        }
+  if (activeUserSearch) {
+    if (activeUserSearch.minNetWorth && activeUserSearch.maxNetWorth) {
+      where.netWorth = {
+        [Op.between]: [
+          parseInt(activeUserSearch.minNetWorth),
+          parseInt(activeUserSearch.maxNetWorth)
+        ]
+      };
     }
 
-
-    if(activeUserSearch.maxHeight){
-      where.height={
-          [Op.lt]: activeUserSearch.maxHeight
-        }
+    if (activeUserSearch.minHeight) {
+      where.height = {
+        [Op.gt]: activeUserSearch.minHeight
+      };
     }
 
-    if(activeUserSearch.jobTitle && activeUserSearch.jobTitle != ''){
-      where.jobTitle={
+    if (activeUserSearch.maxHeight) {
+      where.height = {
+        [Op.lt]: activeUserSearch.maxHeight
+      };
+    }
+
+    if (activeUserSearch.jobTitle && activeUserSearch.jobTitle != "") {
+      where.jobTitle = {
         [Op.like]: `%${activeUserSearch.jobTitle}%`
-        }
+      };
     }
 
-    if(activeUserSearch.occupations.length>0){
-      where.occupationId={
+    if (activeUserSearch.occupations.length > 0) {
+      where.occupationId = {
         [Op.in]: activeUserSearch.occupations
-      }
+      };
     }
 
-    if(activeUserSearch.childrenIds.length>0){
-      where.childrenId={
+    if (activeUserSearch.childrenIds.length > 0) {
+      where.childrenId = {
         [Op.in]: activeUserSearch.childrenIds
-      }
+      };
     }
 
-    if(activeUserSearch.educationIds.length>0){
-      where.educationId={
+    if (activeUserSearch.educationIds.length > 0) {
+      where.educationId = {
         [Op.in]: activeUserSearch.educationIds
-      }
+      };
     }
 
-
-    if(activeUserSearch.heirTypeIds.length>0){
-      where.hairColorId={
+    if (activeUserSearch.heirTypeIds.length > 0) {
+      where.hairColorId = {
         [Op.in]: activeUserSearch.heirTypeIds
-      }
+      };
     }
 
-
-    if(activeUserSearch.relationshipStatusIds.length>0){
-      where.relationshipStatusId={
+    if (activeUserSearch.relationshipStatusIds.length > 0) {
+      where.relationshipStatusId = {
         [Op.in]: activeUserSearch.relationshipStatusIds
-      }
+      };
     }
 
-    // if(activeUserSearch.showMemberSeekengIds.length>0){
-    //   where.id={
-    //     [Op.in]: activeUserSearch.showMemberSeekengIds
-    //   }
-    // }
-    console.log('useruseruser-->111', where)
-    return where 
-
+    console.log("useruseruser-->111", where);
+    return where;
   }
- 
-}
-
+};
 
 exports.getCommonWhereCondition = getCommonWhereCondition;
 exports.getUserPreferenceCondition = getUserPreferenceCondition;
-
 
 exports.index = catchAsync(async (req, res, next) => {
   res.status(200).send({ message: success });
@@ -181,7 +169,7 @@ exports.blockUser = async (req, res, next) => {
     }
     const clause = {
       from: req.user.id,
-      against: parseInt(req.params.id),
+      against: parseInt(req.params.id)
     };
     const alreadyBlocked = await Block.findOne({ where: clause });
     if (alreadyBlocked) {
@@ -190,56 +178,69 @@ exports.blockUser = async (req, res, next) => {
     const blockObj = await Block.create(clause);
     res.status(200).send({
       status: "success",
-      data: blockObj,
+      data: blockObj
     });
   } catch (error) {
     return next(new APIError(error.message, status.BAD_REQUEST));
   }
 };
 
-exports.sendPushNotification = async (req, res, next)=>{
-  console.log('req.body',req.user.id, req.body.data)
+exports.sendPushNotification = async (req, res, next) => {
+  console.log("req.body", req.user.id, req.body.data);
   try {
-  let userFcmTokensOb = await User.findOne({
-    where: {
-      id: req.body.data.id,         
-    },
-  });
-  if (userFcmTokensOb) {
-
-    console.log('req?.body?.data?.profileImage',req?.body?.data?.profileImage )
-    let notification_options = {
-      regTokens: userFcmTokensOb.deviceToken,
-      notificationMsg: {
-        data: { 
-          token:req?.body?.data?.token,
-          screenName:req?.body?.data?.screenName,
-          name: req?.body?.data?.name,
-          thread: req?.body?.data?.thread,
-          profileImage:req?.body?.data?.profileImage,
-          id:req?.body?.data?.id.toString(),
-          senderId: req.user.id.toString()
-         },
-        notification: { 
-        title: req?.body?.data?.name, 
-        body:  req?.body?.data?.message.toString(),
-        image: req?.body?.data?.profileImage
+    let userFcmTokensOb = await User.findOne({
+      where: {
+        id: req.body.data.id
       }
-      },
-  };
-   const result =  sendUnscheduledNotification(notification_options);
-   res.status(200).send({
-    status: "success",
-    data: result
-  });
-  }else{ 
-    throw new Error("User's FCM token not found");
-  }
+    });
+    if (userFcmTokensOb) {
+      console.log(
+        "req?.body?.data?.profileImage",
+        req?.body?.data?.profileImage
+      );
+      let notification_options = {
+        regTokens: userFcmTokensOb.deviceToken,
+        notificationMsg: {
+          data: {
+            token: req?.body?.data?.token,
+            screenName: req?.body?.data?.screenName,
+            name: req?.body?.data?.name,
+            thread: req?.body?.data?.thread,
+            profileImage: req?.body?.data?.profileImage,
+            id: req?.body?.data?.id.toString(),
+            senderId: req.user.id.toString(),
+            // actions: ["hello", "welcome"].toString(),
+          },
+          notification: {
+            title: req?.body?.data?.name,
+            body: req?.body?.data?.message.toString(),
+            image: req?.body?.data?.profileImage,
+            actions: [
+              {
+                title: "Like",
+                action: "like"
+              },
+              {
+                title: "Unsubscribe",
+                action: "unsubscribe"
+              }
+            ].toString()
+          }
+        }
+      };
 
-}catch (error){
-  return next(new APIError(error.message, status.BAD_REQUEST));
-}
-}
+      const result = sendUnscheduledNotification(notification_options);
+      res.status(200).send({
+        status: "success",
+        data: result
+      });
+    } else {
+      throw new Error("User's FCM token not found");
+    }
+  } catch (error) {
+    return next(new APIError(error.message, status.BAD_REQUEST));
+  }
+};
 
 exports.reportUser = async (req, res, next) => {
   try {
@@ -248,14 +249,14 @@ exports.reportUser = async (req, res, next) => {
       throw new Error("User you want to report not found");
     }
     let {
-      body: { reason, note },
+      body: { reason, note }
     } = req;
     const clause = {
       from: req.user.id,
-      against: parseInt(req.params.id),
+      against: parseInt(req.params.id)
     };
     const alreadyReported = await Report.findOne({
-      where: clause,
+      where: clause
     });
     if (alreadyReported) {
       throw new Error(messages.ALREADY_REPORTED);
@@ -264,7 +265,7 @@ exports.reportUser = async (req, res, next) => {
     const reportObject = await Report.create(createObject);
     res.status(200).send({
       status: "success",
-      data: reportObject,
+      data: reportObject
     });
   } catch (error) {
     return next(new APIError(error.message, status.BAD_REQUEST));
@@ -280,54 +281,60 @@ exports.likeUser = async (req, res, next) => {
     const clause = {
       where: {
         from: req.user.id,
-        to: parseInt(req.params.id),
-      },
+        to: parseInt(req.params.id)
+      }
     };
     // const alreadyLiked = await Like.findOne(clause);
-    if (!userExists) { //alreadyLiked
+    if (!userExists) {
+      //alreadyLiked
       throw new Error(messages.ALREADY_LIKED);
-    }else{
+    } else {
       const likeObject = await Like.create(clause.where);
       let userFcmTokensOb = await User.findOne({
         where: {
-          id: req.params.id,        
-        },
+          id: req.params.id
+        }
       });
       if (userFcmTokensOb) {
         // userFcmTokensOb = userFcmTokensOb.map(function (user) {
         //   return user["fcmToken"];
         // });
         let notification_options = {
-        regTokens: userFcmTokensOb.deviceToken,
-        notificationMsg: {
-          data: { 
-            screenName:'LikedUser'
-           },
-          notification: { title: 'LikedUser', body:  'User has liked you to express interest into your profile.' },
-        },
-    };
-      const result =  sendUnscheduledNotification(notification_options);
-      console.log("result",result)
+          regTokens: userFcmTokensOb.deviceToken,
+          notificationMsg: {
+            data: {
+              screenName: "LikedUser"
+            },
+            notification: {
+              title: "LikedUser",
+              body: "User has liked you to express interest into your profile."
+            }
+          }
+        };
+        const result = sendUnscheduledNotification(notification_options);
+        console.log("result", result);
       }
 
-      const match = await Like.findOne( {where:{
-        to: req.user.id,
-        from: parseInt(req.params.id),
-      }});
+      const match = await Like.findOne({
+        where: {
+          to: req.user.id,
+          from: parseInt(req.params.id)
+        }
+      });
 
-      console.log("matchmatch",match)
+      console.log("matchmatch", match);
 
       res.status(200).send({
         status: "success",
         data: likeObject,
-        itsMatch: (match?true: false)        
+        itsMatch: match ? true : false
       });
     }
   } catch (error) {
-    console.log("Error in Like",error)
+    console.log("Error in Like", error);
     res.status(200).send({
       status: status.BAD_REQUEST,
-      message: error.message     
+      message: error.message
     });
 
     //return next(new APIError(error.message, status.BAD_REQUEST));
@@ -338,7 +345,7 @@ exports.getListOfAllUsersLikedByMe = async (req, res, next) => {
   try {
     const likedUsers = await User.findOne({
       where: {
-        id: req.user.id,
+        id: req.user.id
       },
       include: [
         {
@@ -353,83 +360,83 @@ exports.getListOfAllUsersLikedByMe = async (req, res, next) => {
                 include: [
                   {
                     model: BodyType,
-                    attributes: ["id", "name"],
+                    attributes: ["id", "name"]
                   },
                   {
                     model: Ethnicity,
-                    attributes: ["id", "name"],
+                    attributes: ["id", "name"]
                   },
                   {
                     model: HairColor,
-                    attributes: ["id", "name"],
+                    attributes: ["id", "name"]
                   },
                   {
                     model: Education,
-                    attributes: ["id", "name"],
+                    attributes: ["id", "name"]
                   },
                   {
                     model: Children,
-                    attributes: ["id", "name"],
+                    attributes: ["id", "name"]
                   },
                   {
                     model: Occupation,
-                    attributes: ["id", "name"],
-                  },
-                ],
+                    attributes: ["id", "name"]
+                  }
+                ]
               },
               {
                 model: UserPreference,
                 include: [
                   {
                     model: RelationshipStatus,
-                    attributes: ["id", "name"],
+                    attributes: ["id", "name"]
                   },
                   {
                     model: BodyType,
-                    attributes: ["id", "name"],
+                    attributes: ["id", "name"]
                   },
                   {
                     model: Ethnicity,
-                    attributes: ["id", "name"],
+                    attributes: ["id", "name"]
                   },
                   {
                     model: HairColor,
-                    attributes: ["id", "name"],
+                    attributes: ["id", "name"]
                   },
                   {
                     model: Education,
-                    attributes: ["id", "name"],
+                    attributes: ["id", "name"]
                   },
                   {
                     model: Children,
-                    attributes: ["id", "name"],
+                    attributes: ["id", "name"]
                   },
                   {
                     model: Occupation,
-                    attributes: ["id", "name"],
+                    attributes: ["id", "name"]
                   },
                   {
                     model: UserTag,
                     include: [
                       {
                         model: Tag,
-                        attributes: ["id", "name"],
-                      },
-                    ],
-                  },
-                ],
-              },
-            ],
-          },
-        },
-      ],
+                        attributes: ["id", "name"]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
     });
     let response = likedUsers.likeFrom.map((ins) => {
       return ins.User;
     });
     res.status(200).send({
       status: "success",
-      data: response,
+      data: response
     });
   } catch (error) {
     return next(new APIError(error, status.BAD_REQUEST));
@@ -442,7 +449,7 @@ exports.getListOfAllUsersWhoLikeMe = async (req, res, next) => {
       include: [
         {
           where: {
-            to: req.user.id,
+            to: req.user.id
           },
           model: Like,
           as: "likeFrom",
@@ -455,75 +462,75 @@ exports.getListOfAllUsersWhoLikeMe = async (req, res, next) => {
                 include: [
                   {
                     model: BodyType,
-                    attributes: ["id", "name"],
+                    attributes: ["id", "name"]
                   },
                   {
                     model: Ethnicity,
-                    attributes: ["id", "name"],
+                    attributes: ["id", "name"]
                   },
                   {
                     model: HairColor,
-                    attributes: ["id", "name"],
+                    attributes: ["id", "name"]
                   },
                   {
                     model: Education,
-                    attributes: ["id", "name"],
+                    attributes: ["id", "name"]
                   },
                   {
                     model: Children,
-                    attributes: ["id", "name"],
+                    attributes: ["id", "name"]
                   },
                   {
                     model: Occupation,
-                    attributes: ["id", "name"],
-                  },
-                ],
+                    attributes: ["id", "name"]
+                  }
+                ]
               },
               {
                 model: UserPreference,
                 include: [
                   {
                     model: RelationshipStatus,
-                    attributes: ["id", "name"],
+                    attributes: ["id", "name"]
                   },
                   {
                     model: BodyType,
-                    attributes: ["id", "name"],
+                    attributes: ["id", "name"]
                   },
                   {
                     model: Ethnicity,
-                    attributes: ["id", "name"],
+                    attributes: ["id", "name"]
                   },
                   {
                     model: HairColor,
-                    attributes: ["id", "name"],
+                    attributes: ["id", "name"]
                   },
                   {
                     model: Education,
-                    attributes: ["id", "name"],
+                    attributes: ["id", "name"]
                   },
                   {
                     model: Children,
-                    attributes: ["id", "name"],
+                    attributes: ["id", "name"]
                   },
                   {
                     model: Occupation,
-                    attributes: ["id", "name"],
+                    attributes: ["id", "name"]
                   },
                   {
                     model: UserTag,
                     include: [
                       {
                         model: Tag,
-                        attributes: ["id", "name"],
-                      },
-                    ],
-                  },
-                ],
-              },
-            ],
+                        attributes: ["id", "name"]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
           },
-          required: true,
+          required: true
         },
         "UserPhotos",
         {
@@ -531,77 +538,77 @@ exports.getListOfAllUsersWhoLikeMe = async (req, res, next) => {
           include: [
             {
               model: BodyType,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: Ethnicity,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: HairColor,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: Education,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: Children,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: Occupation,
-              attributes: ["id", "name"],
-            },
-          ],
+              attributes: ["id", "name"]
+            }
+          ]
         },
         {
           model: UserPreference,
           include: [
             {
               model: RelationshipStatus,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: BodyType,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: Ethnicity,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: HairColor,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: Education,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: Children,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: Occupation,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: UserTag,
               include: [
                 {
                   model: Tag,
-                  attributes: ["id", "name"],
-                },
-              ],
-            },
-          ],
-        },
-      ],
+                  attributes: ["id", "name"]
+                }
+              ]
+            }
+          ]
+        }
+      ]
     });
     res.status(200).send({
       status: "success",
-      data: likedUsers,
+      data: likedUsers
     });
   } catch (error) {
     return next(new APIError(error, status.BAD_REQUEST));
@@ -615,11 +622,11 @@ exports.deleteAccount = async (req, res, next) => {
     }
     await User.destroy({
       where: {
-        id: req.user.id,
-      },
+        id: req.user.id
+      }
     });
     res.status(200).send({
-      status: "success",
+      status: "success"
     });
   } catch (error) {
     return next(new APIError(error.message, status.BAD_REQUEST));
@@ -633,16 +640,16 @@ exports.disableAccount = async (req, res, next) => {
     }
     await User.update(
       {
-        isDisabled: true,
+        isDisabled: true
       },
       {
         where: {
-          id: req.user.id,
-        },
+          id: req.user.id
+        }
       }
     );
     res.status(200).send({
-      status: "success",
+      status: "success"
     });
   } catch (error) {
     return next(new APIError(error.message, status.BAD_REQUEST));
@@ -653,7 +660,7 @@ exports.getListOfAllUsersViewedByMe = async (req, res, next) => {
   try {
     const viewedUsers = await User.findOne({
       where: {
-        id: req.user.id,
+        id: req.user.id
       },
       include: [
         {
@@ -668,83 +675,83 @@ exports.getListOfAllUsersViewedByMe = async (req, res, next) => {
                 include: [
                   {
                     model: BodyType,
-                    attributes: ["id", "name"],
+                    attributes: ["id", "name"]
                   },
                   {
                     model: Ethnicity,
-                    attributes: ["id", "name"],
+                    attributes: ["id", "name"]
                   },
                   {
                     model: HairColor,
-                    attributes: ["id", "name"],
+                    attributes: ["id", "name"]
                   },
                   {
                     model: Education,
-                    attributes: ["id", "name"],
+                    attributes: ["id", "name"]
                   },
                   {
                     model: Children,
-                    attributes: ["id", "name"],
+                    attributes: ["id", "name"]
                   },
                   {
                     model: Occupation,
-                    attributes: ["id", "name"],
-                  },
-                ],
+                    attributes: ["id", "name"]
+                  }
+                ]
               },
               {
                 model: UserPreference,
                 include: [
                   {
                     model: RelationshipStatus,
-                    attributes: ["id", "name"],
+                    attributes: ["id", "name"]
                   },
                   {
                     model: BodyType,
-                    attributes: ["id", "name"],
+                    attributes: ["id", "name"]
                   },
                   {
                     model: Ethnicity,
-                    attributes: ["id", "name"],
+                    attributes: ["id", "name"]
                   },
                   {
                     model: HairColor,
-                    attributes: ["id", "name"],
+                    attributes: ["id", "name"]
                   },
                   {
                     model: Education,
-                    attributes: ["id", "name"],
+                    attributes: ["id", "name"]
                   },
                   {
                     model: Children,
-                    attributes: ["id", "name"],
+                    attributes: ["id", "name"]
                   },
                   {
                     model: Occupation,
-                    attributes: ["id", "name"],
+                    attributes: ["id", "name"]
                   },
                   {
                     model: UserTag,
                     include: [
                       {
                         model: Tag,
-                        attributes: ["id", "name"],
-                      },
-                    ],
-                  },
-                ],
-              },
-            ],
-          },
-        },
-      ],
+                        attributes: ["id", "name"]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
     });
     let response = viewedUsers.viewFrom.map((ins) => {
       return ins.User;
     });
     res.status(200).send({
       status: "success",
-      data: response,
+      data: response
     });
   } catch (error) {
     return next(new APIError(error, status.BAD_REQUEST));
@@ -757,7 +764,7 @@ exports.getListOfAllUsersWhoViewedMe = async (req, res, next) => {
       include: [
         {
           where: {
-            to: req.user.id,
+            to: req.user.id
           },
           model: View,
           as: "viewFrom",
@@ -770,75 +777,75 @@ exports.getListOfAllUsersWhoViewedMe = async (req, res, next) => {
                 include: [
                   {
                     model: BodyType,
-                    attributes: ["id", "name"],
+                    attributes: ["id", "name"]
                   },
                   {
                     model: Ethnicity,
-                    attributes: ["id", "name"],
+                    attributes: ["id", "name"]
                   },
                   {
                     model: HairColor,
-                    attributes: ["id", "name"],
+                    attributes: ["id", "name"]
                   },
                   {
                     model: Education,
-                    attributes: ["id", "name"],
+                    attributes: ["id", "name"]
                   },
                   {
                     model: Children,
-                    attributes: ["id", "name"],
+                    attributes: ["id", "name"]
                   },
                   {
                     model: Occupation,
-                    attributes: ["id", "name"],
-                  },
-                ],
+                    attributes: ["id", "name"]
+                  }
+                ]
               },
               {
                 model: UserPreference,
                 include: [
                   {
                     model: RelationshipStatus,
-                    attributes: ["id", "name"],
+                    attributes: ["id", "name"]
                   },
                   {
                     model: BodyType,
-                    attributes: ["id", "name"],
+                    attributes: ["id", "name"]
                   },
                   {
                     model: Ethnicity,
-                    attributes: ["id", "name"],
+                    attributes: ["id", "name"]
                   },
                   {
                     model: HairColor,
-                    attributes: ["id", "name"],
+                    attributes: ["id", "name"]
                   },
                   {
                     model: Education,
-                    attributes: ["id", "name"],
+                    attributes: ["id", "name"]
                   },
                   {
                     model: Children,
-                    attributes: ["id", "name"],
+                    attributes: ["id", "name"]
                   },
                   {
                     model: Occupation,
-                    attributes: ["id", "name"],
+                    attributes: ["id", "name"]
                   },
                   {
                     model: UserTag,
                     include: [
                       {
                         model: Tag,
-                        attributes: ["id", "name"],
-                      },
-                    ],
-                  },
-                ],
-              },
-            ],
+                        attributes: ["id", "name"]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
           },
-          required: true,
+          required: true
         },
         "UserPhotos",
         {
@@ -846,77 +853,77 @@ exports.getListOfAllUsersWhoViewedMe = async (req, res, next) => {
           include: [
             {
               model: BodyType,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: Ethnicity,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: HairColor,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: Education,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: Children,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: Occupation,
-              attributes: ["id", "name"],
-            },
-          ],
+              attributes: ["id", "name"]
+            }
+          ]
         },
         {
           model: UserPreference,
           include: [
             {
               model: RelationshipStatus,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: BodyType,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: Ethnicity,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: HairColor,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: Education,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: Children,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: Occupation,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: UserTag,
               include: [
                 {
                   model: Tag,
-                  attributes: ["id", "name"],
-                },
-              ],
-            },
-          ],
-        },
-      ],
+                  attributes: ["id", "name"]
+                }
+              ]
+            }
+          ]
+        }
+      ]
     });
     res.status(200).send({
       status: "success",
-      data: viewedUsers,
+      data: viewedUsers
     });
   } catch (error) {
     return next(new APIError(error, status.BAD_REQUEST));
@@ -925,84 +932,82 @@ exports.getListOfAllUsersWhoViewedMe = async (req, res, next) => {
 
 exports.viewUser = async (req, res, next) => {
   try {
-    const userExists = await User.findByPk(req.params.id,{
+    const userExists = await User.findByPk(req.params.id, {
       include: [
         {
-          model: UserPhoto,
-         
+          model: UserPhoto
         },
         {
           model: UserProfile,
           include: [
-           
             {
               model: BodyType,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: Ethnicity,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: HairColor,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: Education,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: Children,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: Occupation,
-              attributes: ["id", "name"],
-            },
-          ],
+              attributes: ["id", "name"]
+            }
+          ]
         },
         {
           model: UserPreference,
           include: [
             {
               model: RelationshipStatus,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: BodyType,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: Ethnicity,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: HairColor,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: Education,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: Children,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: Occupation,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: UserTag,
               include: [
                 {
                   model: Tag,
-                  attributes: ["id", "name"],
-                },
-              ],
-            },
-          ],
-        },
+                  attributes: ["id", "name"]
+                }
+              ]
+            }
+          ]
+        }
       ]
     });
     if (!userExists) {
@@ -1011,8 +1016,8 @@ exports.viewUser = async (req, res, next) => {
     const clause = {
       where: {
         from: req.user.id,
-        to: parseInt(req.params.id),
-      },
+        to: parseInt(req.params.id)
+      }
     };
     const alreadyViewed = await View.findOne(clause);
     if (!alreadyViewed) {
@@ -1062,20 +1067,20 @@ exports.showOnlineStatus = async (req, res, next) => {
       { onlineStatus: !user.onlineStatus },
       {
         where: {
-          id: req.user.id,
-        },
+          id: req.user.id
+        }
       }
     );
 
     const user1 = await User.findOne({
       where: {
-        id: req.user.id,
-      },
+        id: req.user.id
+      }
     });
 
     res.status(200).send({
       status: "success",
-      data: user1,
+      data: user1
     });
   } catch (error) {
     console.log("error is", error);
@@ -1092,20 +1097,20 @@ exports.showJoiningDate = async (req, res, next) => {
       { joiningDate: !user.joiningDate },
       {
         where: {
-          id: req.user.id,
-        },
+          id: req.user.id
+        }
       }
     );
 
     const user1 = await User.findOne({
       where: {
-        id: req.user.id,
-      },
+        id: req.user.id
+      }
     });
 
     res.status(200).send({
       status: "success",
-      data: user1,
+      data: user1
     });
   } catch (error) {
     console.log("error is", error);
@@ -1122,20 +1127,20 @@ exports.showRecentLoginLocation = async (req, res, next) => {
       { showRecentLocation: !user.showRecentLocation },
       {
         where: {
-          id: req.user.id,
-        },
+          id: req.user.id
+        }
       }
     );
 
     const user1 = await User.findOne({
       where: {
-        id: req.user.id,
-      },
+        id: req.user.id
+      }
     });
 
     res.status(200).send({
       status: "success",
-      data: user1,
+      data: user1
     });
   } catch (error) {
     console.log("error is", error);
@@ -1152,20 +1157,20 @@ exports.showInSearch = async (req, res, next) => {
       { showInSearch: !user.showInSearch },
       {
         where: {
-          id: req.user.id,
-        },
+          id: req.user.id
+        }
       }
     );
 
     const user1 = await User.findOne({
       where: {
-        id: req.user.id,
-      },
+        id: req.user.id
+      }
     });
 
     res.status(200).send({
       status: "success",
-      data: user1,
+      data: user1
     });
   } catch (error) {
     console.log("error is", error);
@@ -1182,20 +1187,20 @@ exports.showFavouritedOne = async (req, res, next) => {
       { showFavouritedOne: !user.showFavouritedOne },
       {
         where: {
-          id: req.user.id,
-        },
+          id: req.user.id
+        }
       }
     );
 
     const user1 = await User.findOne({
       where: {
-        id: req.user.id,
-      },
+        id: req.user.id
+      }
     });
 
     res.status(200).send({
       status: "success",
-      data: user1,
+      data: user1
     });
   } catch (error) {
     console.log("error is", error);
@@ -1212,20 +1217,20 @@ exports.showWhenViewSomeone = async (req, res, next) => {
       { showWhenViewSomeone: !user.showWhenViewSomeone },
       {
         where: {
-          id: req.user.id,
-        },
+          id: req.user.id
+        }
       }
     );
 
     const user1 = await User.findOne({
       where: {
-        id: req.user.id,
-      },
+        id: req.user.id
+      }
     });
 
     res.status(200).send({
       status: "success",
-      data: user1,
+      data: user1
     });
   } catch (error) {
     console.log("error is", error);
@@ -1236,21 +1241,21 @@ exports.showWhenViewSomeOne = async (req, res, next) => {
   try {
     let {
       user: { id },
-      body: { showWhenViewSomeOne },
+      body: { showWhenViewSomeOne }
     } = req;
 
     await User.update(
       {
-        showWhenViewSomeOne: showWhenViewSomeOne,
+        showWhenViewSomeOne: showWhenViewSomeOne
       },
       {
         where: {
-          id: id,
-        },
+          id: id
+        }
       }
     );
     res.status(200).send({
-      status: "success",
+      status: "success"
     });
   } catch (error) {
     return next(new APIError(error.message, status.BAD_REQUEST));
@@ -1264,20 +1269,20 @@ exports.showSomeOneFavouritedMe = async (req, res, next) => {
       { someoneFavouritedMe: !user.someoneFavouritedMe },
       {
         where: {
-          id: req.user.id,
-        },
+          id: req.user.id
+        }
       }
     );
 
     const updatedUser = await User.findOne({
       where: {
-        id: req.user.id,
-      },
+        id: req.user.id
+      }
     });
 
     res.status(200).send({
       status: "success",
-      data: updatedUser,
+      data: updatedUser
     });
   } catch (error) {
     console.log("error is", error);
@@ -1292,20 +1297,20 @@ exports.showSomeOneSendMeMessage = async (req, res, next) => {
       { someoneSendMeMessage: !user.someoneSendMeMessage },
       {
         where: {
-          id: req.user.id,
-        },
+          id: req.user.id
+        }
       }
     );
 
     const updatedUser = await User.findOne({
       where: {
-        id: req.user.id,
-      },
+        id: req.user.id
+      }
     });
 
     res.status(200).send({
       status: "success",
-      data: updatedUser,
+      data: updatedUser
     });
   } catch (error) {
     console.log("error is", error);
@@ -1313,40 +1318,35 @@ exports.showSomeOneSendMeMessage = async (req, res, next) => {
   }
 };
 
-
 const { Op } = require("sequelize");
 const { UserPhoto } = require("../models");
 
 exports.showLatestUser = async (req, res, next) => {
-
-  
-  let where = await getCommonWhereCondition(req,  {
+  let where = await getCommonWhereCondition(req, {
     // profileCompletionPercentage: 25,
     [Op.not]: {
-      gender: req.user.gender,
+      gender: req.user.gender
     },
-  isDisabled: false,
-})
-const includes = [
-  {
-    model:UserPhoto
-  }]
-const prefrenceWhere = await getUserPreferenceCondition(req)
-  if(prefrenceWhere){
-    includes.push( {
-      model:UserProfile,
-      where : prefrenceWhere,
-      required:true
-    },)
-  }
-  const user = await User.findAll(
+    isDisabled: false
+  });
+  const includes = [
     {
-      where: where,
-      order: [["id", "DESC"]],
-      include: includes
-      
+      model: UserPhoto
     }
-  );
+  ];
+  const prefrenceWhere = await getUserPreferenceCondition(req);
+  if (prefrenceWhere) {
+    includes.push({
+      model: UserProfile,
+      where: prefrenceWhere,
+      required: true
+    });
+  }
+  const user = await User.findAll({
+    where: where,
+    order: [["id", "DESC"]],
+    include: includes
+  });
 
   try {
     await User.update(
@@ -1356,10 +1356,9 @@ const prefrenceWhere = await getUserPreferenceCondition(req)
       }
     );
 
-
     res.status(200).send({
       status: "latest users",
-      data: user,
+      data: user
     });
   } catch (error) {
     console.log("error is", error);
@@ -1369,8 +1368,6 @@ const prefrenceWhere = await getUserPreferenceCondition(req)
 
 exports.showNearByUser = async (req, res, next) => {
   try {
-
-  
     // const pool = new Pool({
     //   user: 'postgres',
     //   host: 'localhost',
@@ -1382,26 +1379,25 @@ exports.showNearByUser = async (req, res, next) => {
     //   console.log(err, res)
     //   pool.end()
     // })
-  //   let client = new Client({
-  //     user: 'postgres',
-  //     host: 'localhost',
-  //     database: 'boss-dater-backend',
-  //     password: 'admin',
-  //     port: 5432,
-  // })
-  //   client.connect()
+    //   let client = new Client({
+    //     user: 'postgres',
+    //     host: 'localhost',
+    //     database: 'boss-dater-backend',
+    //     password: 'admin',
+    //     port: 5432,
+    // })
+    //   client.connect()
     // client.query('SELECT NOW()', (err, res) => {
     //   console.log(err, res)
     //   console.log("asdasd")
-     
+
     // })
 
     // const userLatlng = ["31.465564", "74.417984"]
     // const radius = 10
 
     // const _q = `SELECT * FROM "UserProfiles" WHERE ( $1 <= ( latitude + (0.00898315284 * $3) ) ) AND ( $1 >= ( latitude - (0.00898315284 * $3) ) ) AND ( $2 <= ( longitude + (0.00898315284 * $3) ) ) AND ( $2 >= ( longitude - (0.00898315284 * $3) ) )`
-    
-    
+
     // const query = {
     //   // give the query a unique name
     //   name: 'fetch-user',
@@ -1420,9 +1416,9 @@ exports.showNearByUser = async (req, res, next) => {
     // promise
     // let myres = await client
     //   .query(query)
-      // .then(res => console.log(res.rows[0]))
-      // .catch(e => console.error(e.stack))
-   
+    // .then(res => console.log(res.rows[0]))
+    // .catch(e => console.error(e.stack))
+
     //   client.end()
     // let res1 = "hhh"
     // return res.send({
@@ -1441,60 +1437,60 @@ exports.showNearByUser = async (req, res, next) => {
     //   lng: longitude
     // })
     let loggedInUser = await User.findOne({
-      where: { id: req.user.id }, 
+      where: { id: req.user.id },
       include: [
-          {
-            model:UserPhoto
-          },
+        {
+          model: UserPhoto
+        },
         {
           model: UserProfile,
           include: [
             {
               model: BodyType,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: Ethnicity,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: HairColor,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: Education,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: Children,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: Occupation,
-              attributes: ["id", "name"],
-            },
-          ],
-        },
+              attributes: ["id", "name"]
+            }
+          ]
+        }
       ]
-    })
+    });
 
     let where = await getCommonWhereCondition(req, {
-      isDisabled: false,
-    })
-   
+      isDisabled: false
+    });
+
     const includes = [
- 
       {
-        model:UserPhoto
-      }]
-    let wherePreference = {}
-    const prefrenceWhere = await getUserPreferenceCondition(req)
-      if(prefrenceWhere){
-        wherePreference = {...wherePreference, ...prefrenceWhere}
+        model: UserPhoto
       }
-      
+    ];
+    let wherePreference = {};
+    const prefrenceWhere = await getUserPreferenceCondition(req);
+    if (prefrenceWhere) {
+      wherePreference = { ...wherePreference, ...prefrenceWhere };
+    }
+
     let users = await User.findAll({
-      where:where,
+      where: where,
       include: [
         {
           where: wherePreference,
@@ -1502,61 +1498,67 @@ exports.showNearByUser = async (req, res, next) => {
           include: [
             {
               model: BodyType,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: Ethnicity,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: HairColor,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: Education,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: Children,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: Occupation,
-              attributes: ["id", "name"],
-            },
-          ],
-        },
+              attributes: ["id", "name"]
+            }
+          ]
+        }
       ]
-    })
-    let nearByUsers = []
-
+    });
+    let nearByUsers = [];
 
     for (let i = 0; i < users.length; i++) {
       const plainUser = users[i];
-      let user = plainUser
+      let user = plainUser;
 
-      if(user.UserProfile && user.UserProfile.latitude && user.UserProfile.longitude) {
+      if (
+        user.UserProfile &&
+        user.UserProfile.latitude &&
+        user.UserProfile.longitude
+      ) {
         let distanceInKM = Math.round(
           haversine(
             {
               latitude: latitude ? latitude : loggedInUser.UserProfile.latitude,
-              longitude: longitude ? longitude : loggedInUser.UserProfile.longitude
+              longitude: longitude
+                ? longitude
+                : loggedInUser.UserProfile.longitude
             },
             {
               latitude: user.UserProfile.latitude,
-              longitude: user.UserProfile.longitude,
+              longitude: user.UserProfile.longitude
             }
-          ) / 1000)
-  
+          ) / 1000
+        );
+
         if (distanceInKM >= 0 && distanceInKM <= 45) {
-          nearByUsers.push(user)
+          nearByUsers.push(user);
         }
       }
     }
 
     return res.status(200).send({
       status: "nearby users",
-      data: nearByUsers,
+      data: nearByUsers
     });
   } catch (error) {
     console.log("error is", error);
@@ -1564,40 +1566,33 @@ exports.showNearByUser = async (req, res, next) => {
   }
 };
 
-
 exports.showRecentlyActiveUser = async (req, res, next) => {
+  try {
+    const prefrenceWhere = await getUserPreferenceCondition(req);
 
- 
-try{
+    let where = await getCommonWhereCondition(req, {
+      // profileCompletionPercentage: 25,
+      [Op.not]: {
+        gender: req.user.gender
+      },
+      isDisabled: false
+    });
 
-  const prefrenceWhere = await getUserPreferenceCondition(req)
-
-  let where = await getCommonWhereCondition(req,  {
-    // profileCompletionPercentage: 25,
-    [Op.not]: {
-      gender: req.user.gender,
-    },
-    isDisabled: false,
-  })
-
-
-  const user = await User.findAll(
-    {
-      where:where,
+    const user = await User.findAll({
+      where: where,
       order: [["id", "DESC"]],
       include: [
         {
           model: UserProfile,
-          required:true,
+          required: true,
           where: prefrenceWhere
         },
         {
-          model:UserPhoto
-        }]
-    }
-  );
+          model: UserPhoto
+        }
+      ]
+    });
 
-  
     await User.update(
       { showRecentlyActiveUser: !user.showRecentlyActiveUser },
       {
@@ -1605,10 +1600,9 @@ try{
       }
     );
 
-
     res.status(200).send({
       status: "Recently Active users",
-      data: user,
+      data: user
     });
   } catch (error) {
     console.log("error is", error);
@@ -1616,60 +1610,54 @@ try{
   }
 };
 
-
-
-
-// Create user search here 
+// Create user search here
 //accepts post request with params
 
 exports.saveUserSearch = async (req, res, next) => {
   try {
-    console.log('req.bodyreq.body',req.body)
-    if(req.params.id){
+    if (req.params.id) {
       const userSearchExists = await UserSearch.findOne({
-        where:{
+        where: {
           userId: req.user.id,
           id: req.params.id
-        }})
+        }
+      });
 
       if (!userSearchExists) {
         throw new Error("User Search not found");
-      }else{
-
+      } else {
         await UserSearch.update(
-          { ...userSearchExists, ...req.body},
+          { ...userSearchExists, ...req.body },
           {
             where: {
-              id: req.params.id,
-            },
+              id: req.params.id
+            }
           }
         );
-        const  updatedUser = await UserSearch.findByPk(req.params.id);
+        const updatedUser = await UserSearch.findByPk(req.params.id);
         res.status(200).send({
           status: "success",
-          messages:"Saved search updated successfully",
-          data: updatedUser,
+          messages: "Saved search updated successfully",
+          data: updatedUser
         });
       }
-
-    }else{
-
+    } else {
       const userSearchExists = await UserSearch.findOne({
-        where:{
+        where: {
           userId: req.user.id,
           searchName: req.body.searchName
         }
       });
       if (userSearchExists) {
         throw new Error("You are using duplicate search name.");
-      }else{
-
-        const createObject = {...req.body, userId: req.user.id };
+      } else {
+        const createObject = { ...req.body, userId: req.user.id };
+        console.log("createObjectcreateObject",createObject)
         const searchObject = await UserSearch.create(createObject);
         res.status(200).send({
           status: "success",
-          messages:"Saved search created successfully",
-          data: searchObject,
+          messages: "Saved search created successfully",
+          data: searchObject
         });
       }
     }
@@ -1678,39 +1666,34 @@ exports.saveUserSearch = async (req, res, next) => {
   }
 };
 
-
-
-// get user search here 
+// get user search here
 //get request to get all searches associated with user
 
 exports.getUserSearches = async (req, res, next) => {
   try {
-    const searches = await UserSearch.findAll(
-      {
-        where: {
-          userId: req.user.id 
-        },
-        order: [["createdAt", "DESC"]]        
-      }
-    );
+    const searches = await UserSearch.findAll({
+      where: {
+        userId: req.user.id
+      },
+      order: [["createdAt", "DESC"]]
+    });
+
+    console.log("searches",searches)
 
     res.status(200).send({
       status: "success",
-      data: searches,
+      data: searches
     });
   } catch (error) {
     return next(new APIError(error.message, status.BAD_REQUEST));
   }
 };
 
-
-
-// get user search here 
+// get user search here
 //get request to get all searches associated with user
 
 exports.getUserSearchById = async (req, res, next) => {
   try {
-    
     const userSearchExists = await UserSearch.findByPk(req.params.id);
     if (!userSearchExists) {
       throw new Error("User Search you want to get not found");
@@ -1718,38 +1701,39 @@ exports.getUserSearchById = async (req, res, next) => {
 
     res.status(200).send({
       status: "success",
-      data: userSearchExists,
+      data: userSearchExists
     });
   } catch (error) {
     return next(new APIError(error.message, status.BAD_REQUEST));
   }
 };
 
-
-// delete users search here 
+// delete users search here
 
 exports.deleteUserSearchById = async (req, res, next) => {
   try {
-    
-    if(req.params.id){
+    if (req.params.id) {
       const userSearchExists = await UserSearch.findOne({
-        where:{
+        where: {
           userId: req.user.id,
           id: req.params.id
-        }})
+        }
+      });
 
       if (!userSearchExists) {
         throw new Error("User Search not found");
-      }else{
-        await UserSearch.destroy({where:{
-          id: req.params.id
-        }})
+      } else {
+        await UserSearch.destroy({
+          where: {
+            id: req.params.id
+          }
+        });
         res.status(200).send({
           status: "success",
-          messages:"Saved search deleted successfully"
+          messages: "Saved search deleted successfully"
         });
       }
-    }else{
+    } else {
       throw new Error("UserSearch Id missing");
     }
   } catch (error) {
@@ -1757,48 +1741,49 @@ exports.deleteUserSearchById = async (req, res, next) => {
   }
 };
 
-
-
-// delete users search here 
+// delete users search here
 
 exports.activateUserSearchById = async (req, res, next) => {
   try {
-    
-    if(req.params.id){
+    if (req.params.id) {
       const userSearchExists = await UserSearch.findOne({
-        where:{
+        where: {
           userId: req.user.id,
           id: req.params.id
-        }})
+        }
+      });
+
 
       if (!userSearchExists) {
         throw new Error("User Search not found");
-      }else{
+      } else {
         await UserSearch.update(
           {
-            isActive : false
+            isActive: false
           },
           {
-            where:{
+            where: {
               userId: req.user.id
             }
-          })
+          }
+        );
 
         await UserSearch.update(
           {
-            isActive : !userSearchExists.isActive
+            isActive: !userSearchExists.isActive
           },
           {
-            where:{
-            id: req.params.id
+            where: {
+              id: req.params.id
             }
-          })
+          }
+        );
         res.status(200).send({
           status: "success",
-          messages:"Saved search activated successfully"
+          messages: "Saved search activated successfully"
         });
       }
-    }else{
+    } else {
       throw new Error("UserSearch Id missing");
     }
   } catch (error) {
@@ -1806,54 +1791,47 @@ exports.activateUserSearchById = async (req, res, next) => {
   }
 };
 
-
-
-
-
-
-// delete users search here 
+// delete users search here
 
 exports.getUserHistory = async (req, res, next) => {
   try {
-    
-    if(req.params.id){
+    if (req.params.id) {
       const userSearchExists = await User.findOne({
-        where:{
+        where: {
           id: req.params.id
-        }})
+        }
+      });
 
       if (!userSearchExists) {
         throw new Error("User Search not found");
-      }else{
-        
-        const  data = { }
-        console.log('userSearchExists', userSearchExists)
-        data.createdAt = userSearchExists.createdAt
+      } else {
+        const data = {};
+        data.createdAt = userSearchExists.createdAt;
 
-        const theyViewed = await  View.findOne({
-            from: req.params.id, 
-            to : req.user.id
-        })
-        if(theyViewed){
-          data.theyViewed = true
+        const theyViewed = await View.findOne({
+          from: req.params.id,
+          to: req.user.id
+        });
+        console.log("theyViewed", req.params.id, theyViewed);
+
+        if (theyViewed !== undefined) {
+          data.theyViewed = true;
         }
 
         const theyLiked = await Like.findOne({
-          from: req.params.id, 
-          to : req.user.id
-      })
-      if(theyLiked){
-        data.theyLiked = true
-      }
-      
+          from: req.params.id,
+          to: req.user.id
+        });
+        if (theyLiked !== undefined) {
+          data.theyLiked = true;
+        }
 
         res.status(200).send({
-          data : data ,
-          status: "success",
-
+          data: data,
+          status: "success"
         });
       }
-    }else{
+    } else {
       throw new Error("UserSearch Id missing");
     }
   } catch (error) {

@@ -180,8 +180,8 @@ exports.create = catchAsync(async (req, res) => {
     // })
     let percentage = DEFAULT_PERCENTAGE;
 
-    let profileValues = Object.assign({}, user.UserProfile.dataValues);
-    let preferenceValues = Object.assign({}, user.UserPreference.dataValues);
+    let profileValues = Object.assign({}, user.UserProfile?.dataValues);
+    let preferenceValues = Object.assign({}, user.UserPreference?.dataValues);
 
     let notNullProfileValues = Object.keys(profileValues).filter(
       (x) => profileValues[x] !== null

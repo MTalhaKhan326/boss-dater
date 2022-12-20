@@ -1,9 +1,11 @@
 const bcrypt = require("bcryptjs");
-const { Op } = require("sequelize");
+const { Op, where, literal } = require("sequelize");
 const APIError = require("../utils/APIError.js");
 const sequelize = require("../config/db.config");
 const status = require("http-status");
 const catchAsync = require("../utils/catchAsync");
+const UserSearch = require("../models/UserSearch.model");
+
 const {
   User,
   UserProfile,
@@ -19,214 +21,390 @@ const {
   Tag,
   Block,
   Like,
+  View
 } = require("../models");
+
 const messages = require("../utils/constants");
 const haversine = require("haversine-distance");
-const {getCommonWhereCondition, getUserPreferenceCondition} =  require('./user.controller');
+const {
+  getCommonWhereCondition,
+  getUserPreferenceCondition
+} = require("./user.controller");
+const moment = require("moment/moment.js");
 
-// route of this api is in user routes //
 
 exports.matchUser = catchAsync(async (req, res, next) => {
   try {
     let me = req.user;
     let preference = await req.user.getUserPreference();
-    let profile = await req.user.getUserProfile();
+
     let weightOnUsers = null;
-    
-    let where = await getCommonWhereCondition(req,{
+
+    let where = await getCommonWhereCondition(req, {
       profileCompletionPercentage: 100,
       [Op.not]: {
-        gender: req.user.gender,
+        gender: req.user.gender
       },
-    isDisabled: false,
-  })
+      isDisabled: false
+    });
 
-  const prefrenceWhere = await getUserPreferenceCondition(req)
+    let activeUserSearch = await UserSearch.findOne({
+      where: {
+        isActive: true,
+        userId: req.user.id
+      }
+    });
 
+    let prefrenceWhere = await getUserPreferenceCondition(
+      req,
+      activeUserSearch
+    );
 
-  let  likes = await Like.findAll(({
-    attributes:['to'],
-    from : req.user.id
-  }))
-  
-const likeList =likes?.map(u => u.get("to"))
+    console.log("prefrenceWhereprefrenceWhere", prefrenceWhere);
 
-if(likeList && likeList.length>0){
-  where[Op.and]={
-    id :{[Op.notIn]: likeList }
-  }
-}
+    let finalFavList = [];
+    let finalViewedMeList = [];
 
-    let users = await User.findAll({
+    if (activeUserSearch && !activeUserSearch.favoritedMe) {
+      let likes = await Like.findAll({
+        attributes: ["to"],
+        where: { to: req.user.id }
+      });
+
+      const likeList = likes?.map((u) => u.get("to"));
+      if (likeList && likeList.length > 0) {
+        finalFavList = likeList || [];
+      }
+    }
+
+    if (activeUserSearch && !activeUserSearch.viewedMe) {
+      let viewed = await View.findAll({
+        attributes: ["to"],
+        where: { to: req.user.id }
+      });
+
+      const viewList = viewed?.map((u) => u.get("to"));
+
+      if (viewList && viewList.length > 0) {
+        finalViewedMeList = viewList || [];
+      }
+    }
+    let notInList = [...finalFavList, ...finalViewedMeList];
+    if (notInList && notInList.length) {
+      where[Op.and] = {
+        id: { [Op.notIn]: notInList }
+      };
+    }
+
+    if (
+      activeUserSearch &&
+      activeUserSearch.minAge &&
+      activeUserSearch.maxAge
+    ) {
+      const start = moment()
+        .subtract(activeUserSearch.maxAge, "years")
+        .format("YYYY-MM-DD");
+      const end = moment()
+        .subtract(activeUserSearch.minAge, "years")
+        .format("YYYY-MM-DD");
+      where.birthDate = {
+        [Op.between]: [start, end]
+      };
+    }
+
+    if (activeUserSearch) {
+      let sekkingIds = [];
+      sekkingIds = await UserTag.findAll({
+        attributes: ["userPreferenceId"],
+        where: {
+          tagId: {
+            [Op.in]: activeUserSearch.showMemberSeekengIds
+          }
+        }
+      });
+      
+      let notSekkingIds = [];
+      notSekkingIds = await UserTag.findAll({
+        attributes: ["userPreferenceId"],
+        where: {
+          tagId: {
+            [Op.in]: activeUserSearch.doNotShowMemberSeekings
+          }
+        }
+      });
+
+      var actualSekkingIds = [];
+      actualSekkingIds =  sekkingIds.map((k) => {
+        return k?.dataValues?.userPreferenceId;
+      });
+
+      var actualNotSekkingIds = [];
+      actualNotSekkingIds =  notSekkingIds.map((k) => {
+        return k?.dataValues?.userPreferenceId;
+      });
+    }
+
+    const latitude = activeUserSearch?.latitude;
+    const longitude = activeUserSearch?.longitude;
+    const distance = activeUserSearch?.minDistance;
+
+    console.log("latitudelatitudelatitude", latitude, longitude, distance);
+
+    const haversine = (
+        `6371 * acos(
+          cos(radians(${latitude}))
+          * cos(radians(latitude))
+          * cos(radians(longitude) - radians(${longitude}))
+          + sin(radians(latitude)) * sin(radians(${latitude}))
+      )`
+    );
+
+    let users = [];
+    // prefrenceWhere={};
+    if(activeUserSearch && activeUserSearch.minDistance) {
+      prefrenceWhere [Op.and] = [
+        sequelize.where(sequelize.literal(haversine), "<=", distance)
+      ]
+     }
+
+     console.log("prefrenceWhereprefrenceWhereprefrenceWhere",prefrenceWhere)
+
+    users = await User.findAll({
       where: where,
       order: [["id", "DESC"]],
       include: [
         "UserPhotos",
         {
           model: UserProfile,
-          required:true,
           where: prefrenceWhere,
-          include: [ 
-            {
-              model: RelationshipStatus,
-              attributes: ["id", "name"],
-            },
-            {
-              model: BodyType,
-              attributes: ["id", "name"],
-            },
-            {
-              model: Ethnicity,
-              attributes: ["id", "name"],
-            },
-            {
-              model: HairColor,
-              attributes: ["id", "name"],
-            },
-            {
-              model: Education,
-              attributes: ["id", "name"],
-            },
-            {
-              model: Children,
-              attributes: ["id", "name"],
-            },
-            {
-              model: Occupation,
-              attributes: ["id", "name"],
-            },
+          attributes: [
+            '*',
+            [sequelize.literal(haversine), 'distance'],
           ],
-        },
-        {
-          model: UserPreference,
+          required: true,
           include: [
             {
               model: RelationshipStatus,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: BodyType,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: Ethnicity,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: HairColor,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: Education,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: Children,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: Occupation,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
+            }
+          ]
+        },
+        {
+          model: UserPreference,
+          where:
+            actualSekkingIds || actualNotSekkingIds
+              && {
+                  [Op.and]: [
+                    {
+                      id: {
+                        [Op.in]: actualSekkingIds || []
+                      }
+                    },
+                    {
+                      id: {
+                        [Op.not]: actualNotSekkingIds || []
+                      }
+                    }
+                  ]
+                },
+          required: true,
+          include: [
+            {
+              model: RelationshipStatus,
+              attributes: ["id", "name"]
+            },
+            {
+              model: BodyType,
+              attributes: ["id", "name"]
+            },
+            {
+              model: Ethnicity,
+              attributes: ["id", "name"]
+            },
+            {
+              model: HairColor,
+              attributes: ["id", "name"]
+            },
+            {
+              model: Education,
+              attributes: ["id", "name"]
+            },
+            {
+              model: Children,
+              attributes: ["id", "name"]
+            },
+            {
+              model: Occupation,
+              attributes: ["id", "name"]
             },
             {
               model: UserTag,
               include: [
                 {
                   model: Tag,
-                  attributes: ["id", "name"],
-                },
-              ],
-            },
-          ],
-        },
-      ],
+                  attributes: ["id", "name"]
+                }
+              ]
+            }
+          ]
+        }
+      ]
     });
 
-    const blockedUsers = await User.findOne({
-      where: {
-        id: req.user.id,
-      },
-      include: [
-        {
-          model: Block,
-          as: "blockFrom",
-        },
-      ],
-    });
-    let response = blockedUsers.blockFrom.map((ins) => {
-      return ins.against;
-    });
-    for (let i = 0; i < users.length; i++) {
-      const user = users[i];
-      if (response.includes(user.id)) {
-        users.splice(i, 1);
-        i--; //decrement
-      }
+    console.log("idsidsidsids", users);
+
+    weightOnUsers = users;
+    if (activeUserSearch) {
+      weightOnUsers = users.map((user) => {
+        let weight = 0;
+
+        let age = getAge(user.birthDate);
+        let height = user.UserProfile.height;
+        if (age >= activeUserSearch.minAge && age <= activeUserSearch.maxAge)
+          ++weight;
+
+        if (
+          height >= parseInt(preference.minHeight) &&
+          height <= parseInt(preference.maxHeight)
+        )
+          ++weight;
+
+        if (
+          activeUserSearch.relationshipStatusIds?.includes(
+            user.UserProfile.relationshipStatusId
+          )
+        ) {
+          ++weight;
+        }
+        if (
+          activeUserSearch.bodyTypesIds?.includes(user.UserProfile.bodyTypeId)
+        ) {
+          ++weight;
+        }
+        if (
+          activeUserSearch.heirTypeIds?.includes(user.UserProfile.hairColorId)
+        ) {
+          ++weight;
+        }
+
+        if (
+          activeUserSearch.educationIds?.includes(user.UserProfile.educationId)
+        ) {
+          ++weight;
+        }
+        if (
+          activeUserSearch.childrenIds?.includes(user.UserProfile.childrenId)
+        ) {
+          ++weight;
+        }
+
+        if (
+          activeUserSearch.occupations?.includes(user.UserProfile.Occupation)
+        ) {
+          ++weight;
+        }
+        if (activeUserSearch.jobTitle?.includes(user.UserProfile.jobTitle)) {
+          ++weight;
+        }
+
+        user.weight = weight;
+        return user;
+      });
+    } else {
+      weightOnUsers = users.map((user) => {
+        let weight = 0;
+
+        let age = getAge(user.birthDate);
+        let height = user.UserProfile.height;
+        if (age >= preference.minAge && age <= preference.maxAge) ++weight;
+
+        if (
+          height >= parseInt(preference.minHeight) &&
+          height <= parseInt(preference.maxHeight)
+        )
+          ++weight;
+
+        if (
+          user.UserProfile.relationshipStatusId ===
+          preference.relationshipStatusId
+        ) {
+          ++weight;
+        }
+
+        if (user.UserProfile.bodyTypeId === preference.bodyTypeId) {
+          ++weight;
+        }
+
+        if (user.UserProfile.ethnicityId === preference.ethnicityId) {
+          ++weight;
+        }
+
+        if (user.UserProfile.hairColorId === preference.ethnicityId) {
+          ++weight;
+        }
+
+        if (user.UserProfile.educationId === preference.educationId) {
+          ++weight;
+        }
+
+        if (user.UserProfile.childrenId === preference.childrenId) {
+          ++weight;
+        }
+
+        if (user.UserProfile.occupationId === preference.occupationId) {
+          ++weight;
+        }
+
+        if (preference.jobTitle?.includes(user.UserProfile.jobTitle)) {
+          ++weight;
+        }
+
+        user.weight = weight;
+        return user;
+      });
+
+      weightOnUsers.sort((obj1, obj2) => {
+        if (obj1.weight > obj2.weight) return -1;
+        if (obj1.weight < obj2.weight) return 1;
+
+        return 0;
+      });
     }
-    weightOnUsers = users.map((plainUser) => {
-      let user = plainUser.get({ plain: true });
-      let weight = 0;
-
-      let age = getAge(user.birthDate);
-      let height = user.UserProfile.height;
-      if (age >= preference.minAge && age <= preference.maxAge) ++weight;
-
-      if (
-        height >= parseInt(preference.minHeight) &&
-        height <= parseInt(preference.maxHeight)
-      )
-        ++weight;
-
-      if (
-        user.UserProfile.relationshipStatusId ===
-        preference.relationshipStatusId
-      ) {
-        ++weight;
-      }
-
-      if (user.UserProfile.bodyTypeId === preference.bodyTypeId) {
-        ++weight;
-      }
-
-      if (user.UserProfile.ethnicityId === preference.ethnicityId) {
-        ++weight;
-      }
-
-      if (user.UserProfile.hairColorId === preference.ethnicityId) {
-        ++weight;
-      }
-
-      if (user.UserProfile.educationId === preference.educationId) {
-        ++weight;
-      }
-
-      if (user.UserProfile.childrenId === preference.childrenId) {
-        ++weight;
-      }
-
-      if (user.UserProfile.occupationId === preference.occupationId) {
-        ++weight;
-      }
-      user.weight = weight;
-      return user;
-    });
-
-    weightOnUsers.sort((obj1, obj2) => {
-      if (obj1.weight > obj2.weight) return -1;
-      if (obj1.weight < obj2.weight) return 1;
-
-      return 0;
-    });
+    
+    console.log("activeUserSearch", weightOnUsers);
 
     res.status(200).send({
       status: "success",
-      // token,
-      data: weightOnUsers,
+      data: weightOnUsers
     });
   } catch (error) {
-    console.log(' error.message error.message', error.message)
+    console.log(" error.message error.message", error.message);
     res.status(500).send({
-      message: error.message,
+      message: error.message
     });
   }
 });
