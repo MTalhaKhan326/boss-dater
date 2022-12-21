@@ -32,7 +32,6 @@ const {
 } = require("./user.controller");
 const moment = require("moment/moment.js");
 
-
 exports.matchUser = catchAsync(async (req, res, next) => {
   try {
     let me = req.user;
@@ -47,7 +46,7 @@ exports.matchUser = catchAsync(async (req, res, next) => {
       },
       isDisabled: false
     });
-
+console.log('whereDatawhereDatawhereDatawhereData',where)
     let activeUserSearch = await UserSearch.findOne({
       where: {
         isActive: true,
@@ -59,8 +58,6 @@ exports.matchUser = catchAsync(async (req, res, next) => {
       req,
       activeUserSearch
     );
-
-    console.log("prefrenceWhereprefrenceWhere", prefrenceWhere);
 
     let finalFavList = [];
     let finalViewedMeList = [];
@@ -96,23 +93,23 @@ exports.matchUser = catchAsync(async (req, res, next) => {
       };
     }
 
-    if (
-      activeUserSearch &&
-      activeUserSearch.minAge &&
-      activeUserSearch.maxAge
-    ) {
+    if (activeUserSearch?.minAge && activeUserSearch?.maxAge) {
+      console.log(" activeUserSearch.minAge", activeUserSearch);
       const start = moment()
-        .subtract(activeUserSearch.maxAge, "years")
+        .subtract(activeUserSearch?.maxAge, "years")
         .format("YYYY-MM-DD");
       const end = moment()
-        .subtract(activeUserSearch.minAge, "years")
+        .subtract(activeUserSearch?.minAge, "years")
         .format("YYYY-MM-DD");
       where.birthDate = {
         [Op.between]: [start, end]
       };
     }
 
-    if (activeUserSearch) {
+    if (
+      activeUserSearch?.showMemberSeekengIds ||
+      activeUserSearch?.doNotShowMemberSeekings
+    ) {
       let sekkingIds = [];
       sekkingIds = await UserTag.findAll({
         attributes: ["userPreferenceId"],
@@ -122,7 +119,7 @@ exports.matchUser = catchAsync(async (req, res, next) => {
           }
         }
       });
-      
+
       let notSekkingIds = [];
       notSekkingIds = await UserTag.findAll({
         attributes: ["userPreferenceId"],
@@ -134,40 +131,78 @@ exports.matchUser = catchAsync(async (req, res, next) => {
       });
 
       var actualSekkingIds = [];
-      actualSekkingIds =  sekkingIds.map((k) => {
+      actualSekkingIds = sekkingIds.map((k) => {
         return k?.dataValues?.userPreferenceId;
       });
 
       var actualNotSekkingIds = [];
-      actualNotSekkingIds =  notSekkingIds.map((k) => {
+      actualNotSekkingIds = notSekkingIds.map((k) => {
         return k?.dataValues?.userPreferenceId;
       });
     }
 
-    const latitude = activeUserSearch?.latitude;
-    const longitude = activeUserSearch?.longitude;
-    const distance = activeUserSearch?.minDistance;
+    let users = [];
+    var attributes = null;
+    let haversine = null;
+    if (activeUserSearch && activeUserSearch.otherLocation === true) {
+      const latitude = activeUserSearch?.latitude;
+      const longitude = activeUserSearch?.longitude;
+      const distance = activeUserSearch?.minDistance;
+      console.log(
+        "otherLocationotherLocationotherLocation",
+        latitude,
+        longitude,
+        distance
+      );
 
-    console.log("latitudelatitudelatitude", latitude, longitude, distance);
+       haversine = `6371 * acos(
+              cos(radians(${latitude}))
+              * cos(radians(latitude))
+              * cos(radians(longitude) - radians(${longitude}))
+              + sin(radians(latitude)) * sin(radians(${latitude}))
+          )`;
+      prefrenceWhere[Op.and] = [
+        sequelize.where(sequelize.literal(haversine), "<=", distance)
+      ];
+      attributes = ["*", [sequelize.literal(haversine), "distance"]];
+    }
 
-    const haversine = (
-        `6371 * acos(
+    if (activeUserSearch && activeUserSearch.gps === true) {
+      const userProfile = await UserProfile.findOne({ userId: req.user.id });
+      const latitude = userProfile?.recentLatitude;
+      const longitude = userProfile?.recentLongitude;
+      const distance = activeUserSearch?.minDistance;
+
+      console.log("GPSGPSGPSGPSGPS", latitude, longitude, distance);
+
+       haversine = `6371 * acos(
           cos(radians(${latitude}))
           * cos(radians(latitude))
           * cos(radians(longitude) - radians(${longitude}))
           + sin(radians(latitude)) * sin(radians(${latitude}))
-      )`
-    );
-
-    let users = [];
-    // prefrenceWhere={};
-    if(activeUserSearch && activeUserSearch.minDistance) {
-      prefrenceWhere [Op.and] = [
+      )`;
+      prefrenceWhere[Op.and] = [
         sequelize.where(sequelize.literal(haversine), "<=", distance)
-      ]
-     }
+      ];
+    }
 
-     console.log("prefrenceWhereprefrenceWhereprefrenceWhere",prefrenceWhere)
+    var whereData = {};
+    if (actualSekkingIds !== undefined || actualNotSekkingIds !== undefined) {
+      whereData[Op.not] = [
+        {
+          id: {
+            [Op.in]: actualSekkingIds || []
+          }
+        },
+        {
+          id: {
+            [Op.not]: actualNotSekkingIds || []
+          }
+        }
+      ];
+    }
+
+    console.log("whereDatawhereData", where);
 
     users = await User.findAll({
       where: where,
@@ -177,10 +212,6 @@ exports.matchUser = catchAsync(async (req, res, next) => {
         {
           model: UserProfile,
           where: prefrenceWhere,
-          attributes: [
-            '*',
-            [sequelize.literal(haversine), 'distance'],
-          ],
           required: true,
           include: [
             {
@@ -215,23 +246,8 @@ exports.matchUser = catchAsync(async (req, res, next) => {
         },
         {
           model: UserPreference,
-          where:
-            actualSekkingIds || actualNotSekkingIds
-              && {
-                  [Op.and]: [
-                    {
-                      id: {
-                        [Op.in]: actualSekkingIds || []
-                      }
-                    },
-                    {
-                      id: {
-                        [Op.not]: actualNotSekkingIds || []
-                      }
-                    }
-                  ]
-                },
-          required: true,
+          where: whereData,
+          required: false,
           include: [
             {
               model: RelationshipStatus,
@@ -394,7 +410,7 @@ exports.matchUser = catchAsync(async (req, res, next) => {
         return 0;
       });
     }
-    
+
     console.log("activeUserSearch", weightOnUsers);
 
     res.status(200).send({

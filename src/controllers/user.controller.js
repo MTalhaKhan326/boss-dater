@@ -30,7 +30,6 @@ const getCommonWhereCondition = async (req, where = {}) => {
   let blocks = await Block.findAll({
     attributes: ["against"],
     where: {
-     
       from: req.user.id
       }
   });
@@ -42,7 +41,8 @@ const getCommonWhereCondition = async (req, where = {}) => {
     }
   });
 
-  if (blocks || reports) {
+
+  if (blocks?.length>0 || reports?.length>0) {
     if (blocks) blocks = blocks?.map((u) => u.get("against"));
     else {
       blocks = [];
@@ -59,14 +59,16 @@ const getCommonWhereCondition = async (req, where = {}) => {
 
     return where;
   } else {
-    return null;
+    return where;
   }
 };
 
 const getUserPreferenceCondition = async (req, activeUserSearch = null) => {
+
   const where = {};
 
   if (!activeUserSearch) {
+
     activeUserSearch = await UserSearch.findOne({
       isActive: true,
       userId: req.user.id
@@ -131,7 +133,6 @@ const getUserPreferenceCondition = async (req, activeUserSearch = null) => {
       };
     }
 
-    console.log("useruseruser-->111", where);
     return where;
   }
 };
