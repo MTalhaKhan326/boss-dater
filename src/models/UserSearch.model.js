@@ -166,6 +166,11 @@ UserSearch.init(
       allowNull: true
     },
 
+    otherLocationAddress: {
+      type:  DataTypes.STRING,
+      allowNull: true,
+    },
+    
     showMemberSeekengIds: {
       type: DataTypes.ARRAY(DataTypes.INTEGER),
       allowNull: true
