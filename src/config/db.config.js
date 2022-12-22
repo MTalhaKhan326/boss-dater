@@ -10,7 +10,7 @@ const sequelize = new Sequelize(
     host:DB_HOST, 
     port: DB_PORT,
     dialectOptions: {
-        ssl: false
+        ssl: true
     }
 }
 )
