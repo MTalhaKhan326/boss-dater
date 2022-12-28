@@ -31,6 +31,13 @@ const {
   getUserPreferenceCondition
 } = require("./user.controller");
 const moment = require("moment/moment.js");
+const UserRelationship = require("../models/UserRelationship.model.js");
+const UserOccupation = require("../models/UserOccupation.model.js");
+const UserBodyTypes = require("../models/UserBodyType.model.js");
+const UserEthnicity = require("../models/UserEthnicity.model.js");
+const UserHairColor = require("../models/UserHairColor.model.js");
+const UserEducations = require("../models/UserEducation.model.js");
+const UserChildren = require("../models/UserChildren.model.js");
 
 exports.matchUser = catchAsync(async (req, res, next) => {
   try {
@@ -46,7 +53,7 @@ exports.matchUser = catchAsync(async (req, res, next) => {
       },
       isDisabled: false
     });
-console.log('whereDatawhereDatawhereDatawhereData',where)
+    console.log("whereDatawhereDatawhereDatawhereData", where);
     let activeUserSearch = await UserSearch.findOne({
       where: {
         isActive: true,
@@ -155,7 +162,7 @@ console.log('whereDatawhereDatawhereDatawhereData',where)
         distance
       );
 
-       haversine = `6371 * acos(
+      haversine = `6371 * acos(
               cos(radians(${latitude}))
               * cos(radians(latitude))
               * cos(radians(longitude) - radians(${longitude}))
@@ -175,7 +182,7 @@ console.log('whereDatawhereDatawhereDatawhereData',where)
 
       console.log("GPSGPSGPSGPSGPS", latitude, longitude, distance);
 
-       haversine = `6371 * acos(
+      haversine = `6371 * acos(
           cos(radians(${latitude}))
           * cos(radians(latitude))
           * cos(radians(longitude) - radians(${longitude}))
@@ -246,36 +253,69 @@ console.log('whereDatawhereDatawhereDatawhereData',where)
         },
         {
           model: UserPreference,
-          where: whereData,
-          required: false,
           include: [
             {
-              model: RelationshipStatus,
-              attributes: ["id", "name"]
+              model: UserRelationship,
+              include: [
+                {
+                  model: RelationshipStatus,
+                  attributes: ["id", "name"]
+                }
+              ]
             },
             {
-              model: BodyType,
-              attributes: ["id", "name"]
+              model: UserBodyTypes,
+              include: [
+                {
+                  model: BodyType,
+                  attributes: ["id", "name"]
+                }
+              ]
             },
             {
-              model: Ethnicity,
-              attributes: ["id", "name"]
+              model: UserEthnicity,
+              include: [
+                {
+                  model: Ethnicity,
+                  attributes: ["id", "name"]
+                }
+              ]
             },
             {
-              model: HairColor,
-              attributes: ["id", "name"]
+              model: UserHairColor,
+              include: [
+                {
+                  model: HairColor,
+                  attributes: ["id", "name"]
+                }
+              ]
             },
             {
-              model: Education,
-              attributes: ["id", "name"]
+              model: UserEducations,
+              include: [
+                {
+                  model: Education,
+                  attributes: ["id", "name"]
+                }
+              ]
             },
             {
-              model: Children,
-              attributes: ["id", "name"]
+              model: UserChildren,
+              include: [
+                {
+                  model: Children,
+                  attributes: ["id", "name"]
+                }
+              ]
             },
             {
-              model: Occupation,
-              attributes: ["id", "name"]
+              model: UserOccupation,
+              include: [
+                {
+                  model: Occupation,
+                  attributes: ["id", "name"]
+                }
+              ]
             },
             {
               model: UserTag,

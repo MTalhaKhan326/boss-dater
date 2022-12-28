@@ -19,6 +19,14 @@ const Block = require("./Block.model");
 const Like = require("./Like.model");
 const View = require("./View.model");
 const UserSearch = require("./UserSearch.model");
+const UserOccupation = require("./UserOccupation.model");
+const UserRelationship = require("./UserRelationship.model");
+const UserBodyTypes = require("./UserBodyType.model");
+const UserChildren = require("./UserChildren.model");
+const UserEducations = require("./UserEducation.model");
+const UserEthnicity = require("./UserEthnicity.model");
+const UserHairColor = require("./UserHairColor.model");
+const Faq = require("./Faq.model");
 
 User.hasOne(UserProfile, {
   onDelete: "CASCADE",
@@ -81,34 +89,34 @@ UserProfile.belongsTo(RelationshipStatus, {
 });
 
 //user preference
-UserPreference.belongsTo(RelationshipStatus, {
-  onDelete: "CASCADE",
-  foreignKey: "relationshipStatusId",
-});
-UserPreference.belongsTo(BodyType, {
-  onDelete: "CASCADE",
-  foreignKey: "bodyTypeId",
-});
-UserPreference.belongsTo(Ethnicity, {
-  onDelete: "CASCADE",
-  foreignKey: "ethnicityId",
-});
-UserPreference.belongsTo(Occupation, {
-  onDelete: "CASCADE",
-  foreignKey: "occupationId",
-});
-UserPreference.belongsTo(HairColor, {
-  onDelete: "CASCADE",
-  foreignKey: "hairColorId",
-});
-UserPreference.belongsTo(Education, {
-  onDelete: "CASCADE",
-  foreignKey: "educationId",
-});
-UserPreference.belongsTo(Children, {
-  onDelete: "CASCADE",
-  foreignKey: "childrenId",
-});
+// UserPreference.belongsTo(RelationshipStatus, {
+//   onDelete: "CASCADE",
+//   foreignKey: "relationshipStatusId",
+// });
+// UserPreference.belongsTo(BodyType, {
+//   onDelete: "CASCADE",
+//   foreignKey: "bodyTypeId",
+// });
+// UserPreference.belongsTo(Ethnicity, {
+//   onDelete: "CASCADE",
+//   foreignKey: "ethnicityId",
+// });
+// UserPreference.belongsTo(Occupation, {
+//   onDelete: "CASCADE",
+//   foreignKey: "occupationId",
+// });
+// UserPreference.belongsTo(HairColor, {
+//   onDelete: "CASCADE",
+//   foreignKey: "hairColorId",
+// });
+// UserPreference.belongsTo(Education, {
+//   onDelete: "CASCADE",
+//   foreignKey: "educationId",
+// });
+// UserPreference.belongsTo(Children, {
+//   onDelete: "CASCADE",
+//   foreignKey: "childrenId",
+// });
 UserPreference.belongsTo(User, {
   onDelete: "CASCADE",
   foreignKey: "userId",
@@ -116,6 +124,62 @@ UserPreference.belongsTo(User, {
 UserPreference.hasMany(UserTag, {
   onDelete: "CASCADE",
   foreignKey: "userPreferenceId",
+});
+UserPreference.hasMany(UserOccupation, {
+  onDelete: "CASCADE",
+  foreignKey: "userPreferenceId",
+});
+UserOccupation.belongsTo(Occupation, {
+  onDelete: "CASCADE",
+  foreignKey: "occupationId",
+});
+UserPreference.hasMany(UserRelationship, {
+  onDelete: "CASCADE",
+  foreignKey: "userPreferenceId",
+});
+UserRelationship.belongsTo(RelationshipStatus, {
+  onDelete: "CASCADE",
+  foreignKey: "relationshipId",
+});
+UserPreference.hasMany(UserBodyTypes, {
+  onDelete: "CASCADE",
+  foreignKey: "userPreferenceId",
+});
+UserBodyTypes.belongsTo(BodyType, {
+  onDelete: "CASCADE",
+  foreignKey: "bodyTypesId",
+});
+UserPreference.hasMany(UserChildren, {
+  onDelete: "CASCADE",
+  foreignKey: "userPreferenceId",
+});
+UserChildren.belongsTo(Children, {
+  onDelete: "CASCADE",
+  foreignKey: "childrenId",
+});
+UserPreference.hasMany(UserEducations, {
+  onDelete: "CASCADE",
+  foreignKey: "userPreferenceId",
+});
+UserEducations.belongsTo(Education, {
+  onDelete: "CASCADE",
+  foreignKey: "educationId",
+});
+UserPreference.hasMany(UserEthnicity, {
+  onDelete: "CASCADE",
+  foreignKey: "userPreferenceId",
+});
+UserEthnicity.belongsTo(Ethnicity, {
+  onDelete: "CASCADE",
+  foreignKey: "EthnicityId",
+});
+UserPreference.hasMany(UserHairColor, {
+  onDelete: "CASCADE",
+  foreignKey: "userPreferenceId",
+});
+UserHairColor.belongsTo(HairColor, {
+  onDelete: "CASCADE",
+  foreignKey: "hairColorId",
 });
 // UserProfile.hasMany(UserTag, {
 //   onDelete: "CASCADE",

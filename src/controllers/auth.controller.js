@@ -43,6 +43,13 @@ const util = require("util");
 const {
   sendVerificationEmail
 } = require("../utils/sendEmailVerificationEmail");
+const UserRelationship = require("../models/UserRelationship.model");
+const UserBodyTypes = require("../models/UserBodyType.model");
+const UserEthnicity = require("../models/UserEthnicity.model");
+const UserHairColor = require("../models/UserHairColor.model");
+const UserEducations = require("../models/UserEducation.model");
+const UserChildren = require("../models/UserChildren.model");
+const UserOccupation = require("../models/UserOccupation.model");
 const unlinkFile = util.promisify(fs.unlink);
 
 //Register User
@@ -193,32 +200,67 @@ exports.login = catchAsync(async (req, res, next) => {
         model: UserPreference,
         include: [
           {
-            model: RelationshipStatus,
-            attributes: ["id", "name"]
+            model: UserRelationship,
+            include: [
+              {
+                model: RelationshipStatus,
+                attributes: ["id", "name"]
+              }
+            ]
           },
           {
-            model: BodyType,
-            attributes: ["id", "name"]
+            model: UserBodyTypes,
+            include: [
+              {
+                model: BodyType,
+                attributes: ["id", "name"]
+              }
+            ]
           },
           {
-            model: Ethnicity,
-            attributes: ["id", "name"]
+            model: UserEthnicity,
+            include: [
+              {
+                model: Ethnicity,
+                attributes: ["id", "name"]
+              }
+            ]
           },
           {
-            model: HairColor,
-            attributes: ["id", "name"]
+            model: UserHairColor,
+            include: [
+              {
+                model: HairColor,
+                attributes: ["id", "name"]
+              }
+            ]
           },
           {
-            model: Education,
-            attributes: ["id", "name"]
+            model: UserEducations,
+            include: [
+              {
+                model: Education,
+                attributes: ["id", "name"]
+              }
+            ]
           },
           {
-            model: Children,
-            attributes: ["id", "name"]
+            model: UserChildren,
+            include: [
+              {
+                model: Children,
+                attributes: ["id", "name"]
+              }
+            ]
           },
           {
-            model: Occupation,
-            attributes: ["id", "name"]
+            model: UserOccupation,
+            include: [
+              {
+                model: Occupation,
+                attributes: ["id", "name"]
+              }
+            ]
           },
           {
             model: UserTag,

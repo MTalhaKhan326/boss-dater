@@ -3,7 +3,6 @@ const Sequelize = require("sequelize");
 const catchAsync = require("../utils/catchAsync");
 const status = require("http-status");
 const {
-  userPhoto,
   UserTag,
   User,
   UserProfile,
@@ -24,42 +23,45 @@ const {
   DEFAULT_PERCENTAGE,
   PROFILE_PERCENTAGE,
   IMAGE_UPLOAD_PERCENTAGE,
-  RELATIONSHIP_INTENT_PERCENTAGE,
+  RELATIONSHIP_INTENT_PERCENTAGE
 } = require("../utils/constants");
+const UserRelationship = require("../models/UserRelationship.model");
+const UserOccupation = require("../models/UserOccupation.model");
+const UserChildren = require("../models/UserChildren.model");
+const UserEducations = require("../models/UserEducation.model");
+const UserHairColor = require("../models/UserHairColor.model");
+const UserEthnicity = require("../models/UserEthnicity.model");
+const UserBodyTypes = require("../models/UserBodyType.model");
 exports.create = catchAsync(async (req, res) => {
-  let params = {
+  let params = ({
     occupationId,
     description,
     minAge,
     maxAge,
     minHeight,
     maxHeight,
-    relationShipStatusId,
+    relationshipStatusId,
     tagIds,
-    deviceToken,
-  } = req.body;
+    deviceToken
+  } = req.body);
   let male = {};
   let female = {};
 
   if (req.user.gender == "male") {
-    male = {
-      //women
-      bodyTypeId,
-      ethnicityId,
-      hairColorId,
-      educationId,
-      childrenId,
-    } = req.body;
+    male = { bodyTypeId, ethnicityId, hairColorId, educationId, childrenId } =
+      req.body;
   } else {
     female = {
       //men
       jobTitle,
       linkedin,
-      netWorth,
+      netWorth
     } = req.body;
   }
+
   const newParams = { ...params, ...male, ...female };
-  
+  console.log("params", newParams, req.user.gender);
+
   // await UserPreference.update({deviceToken},{
   //   where: {
   //     userId: req.user.id,
@@ -69,30 +71,119 @@ exports.create = catchAsync(async (req, res) => {
   try {
     await UserPreference.update(newParams, {
       where: {
-        userId: req.user.id,
-      },
+        userId: req.user.id
+      }
     });
     const userPreference = await UserPreference.findOne({
       where: {
-        userId: req.user.id,
-      },
+        userId: req.user.id
+      }
     });
     if (userPreference != null) {
-      // const newTags = JSON.parse(tagIds)
-      await UserTag.destroy({ where: { userPreferenceId: userPreference.id }})
+      await UserTag.destroy({ where: { userPreferenceId: userPreference.id } });
+      await UserOccupation.destroy({
+        where: { userPreferenceId: userPreference.id }
+      });
+      await UserRelationship.destroy({
+        where: { userPreferenceId: userPreference.id }
+      });
+      if (req.user.gender == "male") {
+        await UserBodyTypes.destroy({
+          where: { userPreferenceId: userPreference.id }
+        });
+        await UserChildren.destroy({
+          where: { userPreferenceId: userPreference.id }
+        });
+        await UserEducations.destroy({
+          where: { userPreferenceId: userPreference.id }
+        });
+        await UserEthnicity.destroy({
+          where: { userPreferenceId: userPreference.id }
+        });
+        await UserHairColor.destroy({
+          where: { userPreferenceId: userPreference.id }
+        });
+      }
 
-      await Promise.all(
-        tagIds.map(async (tagId) => {
-          await UserTag.create({
-            userPreferenceId: userPreference.id,
-            tagId: tagId,
-          });
-        })
-      );
+      if (req.user.gender == "male") {
+        await Promise.all(
+          tagIds?.map(async (tagId) => {
+            await UserTag.create({
+              userPreferenceId: userPreference.id,
+              tagId: tagId
+            });
+          }),
+          occupationId?.map(async (o_id) => {
+            await UserOccupation.create({
+              userPreferenceId: userPreference.id,
+              occupationId: o_id
+            });
+          }),
+          relationshipStatusId?.map(async (r_id) => {
+            await UserRelationship.create({
+              userPreferenceId: userPreference.id,
+              relationshipId: r_id
+            });
+          }),
+
+          bodyTypeId?.map(async (b_id) => {
+            await UserBodyTypes.create({
+              userPreferenceId: userPreference.id,
+              bodyTypesId: b_id
+            });
+          }),
+          ethnicityId?.map(async (e_id) => {
+            await UserEthnicity.create({
+              userPreferenceId: userPreference.id,
+              ethnicityId: e_id
+            });
+          }),
+          hairColorId?.map(async (h_id) => {
+            await UserHairColor.create({
+              userPreferenceId: userPreference.id,
+              hairColorsId: h_id
+            });
+          }),
+          educationId?.map(async (ed_id) => {
+            await UserEducations.create({
+              userPreferenceId: userPreference.id,
+              educationsId: ed_id
+            });
+          }),
+          childrenId?.map(async (c_id) => {
+            await UserChildren.create({
+              userPreferenceId: userPreference.id,
+              childrensId: c_id
+            });
+          })
+        );
+      } else {
+        await Promise.all(
+          tagIds?.map(async (tagId) => {
+            await UserTag.create({
+              userPreferenceId: userPreference.id,
+              tagId: tagId
+            });
+          }),
+          occupationId?.map(async (o_id) => {
+            await UserOccupation.create({
+              userPreferenceId: userPreference.id,
+              occupationId: o_id
+            });
+          }),
+          relationshipStatusId?.map(async (r_id) => {
+            await UserRelationship.create({
+              userPreferenceId: userPreference.id,
+              relationshipId: r_id
+            });
+          })
+        );
+      }
     }
+
     const user = await User.findOne({
       where: {
-        id: req.user.id,
+        id: req.user.id
       },
       // eager loading child relationship for api
       include: [
@@ -102,77 +193,112 @@ exports.create = catchAsync(async (req, res) => {
           include: [
             {
               model: RelationshipStatus,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: BodyType,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: Ethnicity,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: HairColor,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: Education,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: Children,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: Occupation,
-              attributes: ["id", "name"],
-            },
-          ],
+              attributes: ["id", "name"]
+            }
+          ]
         },
         {
           model: UserPreference,
           include: [
             {
-              model: RelationshipStatus,
-              attributes: ["id", "name"],
+              model: UserRelationship,
+              include: [
+                {
+                  model: RelationshipStatus,
+                  attributes: ["id", "name"]
+                }
+              ]
             },
             {
-              model: BodyType,
-              attributes: ["id", "name"],
+              model: UserBodyTypes,
+              include: [
+                {
+                  model: BodyType,
+                  attributes: ["id", "name"]
+                }
+              ]
             },
             {
-              model: Ethnicity,
-              attributes: ["id", "name"],
+              model: UserEthnicity,
+              include: [
+                {
+                  model: Ethnicity,
+                  attributes: ["id", "name"]
+                }
+              ]
             },
             {
-              model: HairColor,
-              attributes: ["id", "name"],
+              model: UserHairColor,
+              include: [
+                {
+                  model: HairColor,
+                  attributes: ["id", "name"]
+                }
+              ]
             },
             {
-              model: Education,
-              attributes: ["id", "name"],
+              model: UserEducations,
+              include: [
+                {
+                  model: Education,
+                  attributes: ["id", "name"]
+                }
+              ]
             },
             {
-              model: Children,
-              attributes: ["id", "name"],
+              model: UserChildren,
+              include: [
+                {
+                  model: Children,
+                  attributes: ["id", "name"]
+                }
+              ]
             },
             {
-              model: Occupation,
-              attributes: ["id", "name"],
+              model: UserOccupation,
+              include: [
+                {
+                  model: Occupation,
+                  attributes: ["id", "name"]
+                }
+              ]
             },
             {
               model: UserTag,
               include: [
                 {
                   model: Tag,
-                  attributes: ["id", "name"],
-                },
-              ],
-            },
-          ],
-        },
-      ],
+                  attributes: ["id", "name"]
+                }
+              ]
+            }
+          ]
+        }
+      ]
     });
     // await UserTag.create({
     //   userId: req.user.id,
@@ -198,10 +324,10 @@ exports.create = catchAsync(async (req, res) => {
     }
     let isImageUploaded = await UserPhoto.findOne({
       where: {
-        userId: user.id,
-      },
+        userId: user.id
+      }
     });
-    console.log("isImageUploaded",isImageUploaded)
+    console.log("isImageUploaded", isImageUploaded);
     if (isImageUploaded) {
       percentage = percentage + IMAGE_UPLOAD_PERCENTAGE; //this one is not working
     }
@@ -210,25 +336,23 @@ exports.create = catchAsync(async (req, res) => {
       { profileCompletionPercentage: percentage },
       {
         where: {
-          id: user.id,
-        },
+          id: user.id
+        }
       }
     );
     res.status(200).send({
       status: messages.SUCCESS,
       data: user,
-      message: "User preference data fetched",
+      message: "User preference data fetched"
     });
   } catch (error) {
-    console.log('usman');
+    console.log("usman");
     console.log(error);
     res.status(500).send({
-      message: error.message,
+      message: error.message
     });
   }
 });
-
-
 
 exports.searchFilter = catchAsync(async (req, res) => {
   let {
@@ -250,7 +374,7 @@ exports.searchFilter = catchAsync(async (req, res) => {
     bodyTypeId,
     hairColorId,
     educationId,
-    childrenId,
+    childrenId
   } = req.body;
 
   let userMalePreferenceObject = {
@@ -264,7 +388,7 @@ exports.searchFilter = catchAsync(async (req, res) => {
     educationId,
     childrenId,
     relationShipStatusId
-  }
+  };
   let userFemalePreferenceObject = {
     occupationId,
     minAge,
@@ -273,66 +397,64 @@ exports.searchFilter = catchAsync(async (req, res) => {
     maxHeight,
     netWorth,
     relationShipStatusId
-  }
+  };
 
   let userObject = {
     showFavouritedOne,
-    someoneFavouritedMe,
-  }
+    someoneFavouritedMe
+  };
 
   let userProfileObject = {
     jobTitle,
     latitude,
     longitude,
     recentLatitude,
-    recentLongitude,
-  }
+    recentLongitude
+  };
   try {
     if (req.user.gender == "male") {
+      await UserPreference.update(userMalePreferenceObject, {
+        where: {
+          userId: req.user.id
+        }
+      });
+    } else {
+      await UserPreference.update(userFemalePreferenceObject, {
+        where: {
+          userId: req.user.id
+        }
+      });
+    }
 
-    await UserPreference.update(userMalePreferenceObject, {
-      where: {
-        userId: req.user.id,
-      },
-    });
-  }  else {
-    await UserPreference.update(userFemalePreferenceObject, {
-      where: {
-        userId: req.user.id,
-      },
-    });
-  }
-    
     await UserProfile.update(userProfileObject, {
       where: {
-        userId: req.user.id,
-      },
+        userId: req.user.id
+      }
     });
 
     await User.update(userObject, {
       where: {
-        id: req.user.id,
-      },
+        id: req.user.id
+      }
     });
-    
 
     if (req.user.UserPreference != null) {
       // const newTags = JSON.parse(tagIds)
-      await UserTag.destroy({ where: { userPreferenceId: userPreference.id }})
+      await UserTag.destroy({ where: { userPreferenceId: userPreference.id } });
 
       await Promise.all(
         tagIds.map(async (tagId) => {
           await UserTag.create({
             userPreferenceId: parseInt(userPreference.id),
-            tagId: parseInt(tagId),
+            tagId: parseInt(tagId)
           });
         })
       );
     }
-    
+
     const user = await User.findOne({
       where: {
-        id: req.user.id,
+        id: req.user.id
       },
       // eager loading child relationship for api
       include: [
@@ -342,162 +464,191 @@ exports.searchFilter = catchAsync(async (req, res) => {
           include: [
             {
               model: RelationshipStatus,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: BodyType,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: Ethnicity,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: HairColor,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: Education,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: Children,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: Occupation,
-              attributes: ["id", "name"],
-            },
-          ],
+              attributes: ["id", "name"]
+            }
+          ]
         },
         {
           model: UserPreference,
           include: [
             {
               model: RelationshipStatus,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: BodyType,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: Ethnicity,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: HairColor,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: Education,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: Children,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: Occupation,
-              attributes: ["id", "name"],
+              attributes: ["id", "name"]
             },
             {
               model: UserTag,
               include: [
                 {
                   model: Tag,
-                  attributes: ["id", "name"],
-                },
-              ],
-            },
-          ],
-        },
-      ],
+                  attributes: ["id", "name"]
+                }
+              ]
+            }
+          ]
+        }
+      ]
     });
-   
+
     res.status(200).send({
       status: messages.SUCCESS,
       data: user,
-      message: "searched Filters",
+      message: "searched Filters"
     });
   } catch (error) {
-  
     console.log(error);
     res.status(500).send({
-      message: error.message,
+      message: error.message
     });
   }
 });
 
-
 exports.getMyPreference = catchAsync(async (req, res) => {
+  try {
+    const userPreference = await UserPreference.findOne({
+      where: {
+        userId: req.user.id
+      },
+      include: [
+        {
+          model: UserRelationship,
+          include: [
+            {
+              model: RelationshipStatus,
+              attributes: ["id", "name"]
+            }
+          ]
+        },
+        {
+          model: UserBodyTypes,
+          include: [
+            {
+              model: BodyType,
+              attributes: ["id", "name"]
+            }
+          ]
+        },
+        {
+          model: UserEthnicity,
+          include: [
+            {
+              model: Ethnicity,
+              attributes: ["id", "name"]
+            }
+          ]
+        },
+        {
+          model: UserHairColor,
+          include: [
+            {
+              model: HairColor,
+              attributes: ["id", "name"]
+            }
+          ]
+        },
+        {
+          model: UserEducations,
+          include: [
+            {
+              model: Education,
+              attributes: ["id", "name"]
+            }
+          ]
+        },
+        {
+          model: UserChildren,
+          include: [
+            {
+              model: Children,
+              attributes: ["id", "name"]
+            }
+          ]
+        },
+        {
+          model: UserOccupation,
+          include: [
+            {
+              model: Occupation,
+              attributes: ["id", "name"]
+            }
+          ]
+        },
+        {
+          model: UserTag,
+          include: [
+            {
+              model: Tag,
+              attributes: ["id", "name"]
+            }
+          ]
+        }
+      ]
+    });
 
-try{
-  const userPreference = await UserPreference.findOne({
-    where: {
-      userId: req.user.id,
-    },
-
-    include: [
-      {
-        model: RelationshipStatus,
-        attributes: ["id", "name"],
-      },
-      {
-        model: BodyType,
-        attributes: ["id", "name"],
-      },
-      {
-        model: Ethnicity,
-        attributes: ["id", "name"],
-      },
-      {
-        model: HairColor,
-        attributes: ["id", "name"],
-      },
-      {
-        model: Education,
-        attributes: ["id", "name"],
-      },
-      {
-        model: Children,
-        attributes: ["id", "name"],
-      },
-      {
-        model: Occupation,
-        attributes: ["id", "name"],
-      },
-      {
-        model: UserTag,
-        include: [
-          {
-            model: Tag,
-            attributes: ["id", "name"],
-          },
-        ],
-      },
-    ],
-  });
-   
-  if(userPreference){
+    if (userPreference) {
       res.status(200).send({
         status: messages.SUCCESS,
         data: userPreference,
-        message: "Preference",
+        message: "Preference"
       });
-      }else{
-        res.status(200).send({
-          status: messages.SUCCESS,
-          data: null,
-          message: "Preference not found",
-        });
+    } else {
+      res.status(200).send({
+        status: messages.SUCCESS,
+        data: null,
+        message: "Preference not found"
+      });
+    }
+  } catch (error) {
+    console.log(error);
+    res.status(500).send({
+      message: error.message
+    });
   }
-} catch (error) {
-  
-  console.log(error);
-  res.status(500).send({
-    message: error.message,
-  });
-}
-})
-
+});

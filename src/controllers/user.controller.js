@@ -26,12 +26,21 @@ const haversine = require("haversine");
 const { BOOLEAN } = require("sequelize");
 const { loggers } = require("winston");
 const { Pool, Client } = require("pg");
+const UserRelationship = require("../models/UserRelationship.model");
+const UserBodyTypes = require("../models/UserBodyType.model");
+const UserEthnicity = require("../models/UserEthnicity.model");
+const UserHairColor = require("../models/UserHairColor.model");
+const UserEducations = require("../models/UserEducation.model");
+const UserChildren = require("../models/UserChildren.model");
+const UserOccupation = require("../models/UserOccupation.model");
+const Faq = require("../models/Faq.model");
+
 const getCommonWhereCondition = async (req, where = {}) => {
   let blocks = await Block.findAll({
     attributes: ["against"],
     where: {
       from: req.user.id
-      }
+    }
   });
 
   let reports = await Report.findAll({
@@ -41,8 +50,7 @@ const getCommonWhereCondition = async (req, where = {}) => {
     }
   });
 
-
-  if (blocks?.length>0 || reports?.length>0) {
+  if (blocks?.length > 0 || reports?.length > 0) {
     if (blocks) blocks = blocks?.map((u) => u.get("against"));
     else {
       blocks = [];
@@ -64,11 +72,9 @@ const getCommonWhereCondition = async (req, where = {}) => {
 };
 
 const getUserPreferenceCondition = async (req, activeUserSearch = null) => {
-
   const where = {};
 
   if (!activeUserSearch) {
-
     activeUserSearch = await UserSearch.findOne({
       isActive: true,
       userId: req.user.id
@@ -194,6 +200,9 @@ exports.sendPushNotification = async (req, res, next) => {
         id: req.body.data.id
       }
     });
+
+    console.log("userFcmTokensOb", userFcmTokensOb);
+
     if (userFcmTokensOb) {
       console.log(
         "req?.body?.data?.profileImage",
@@ -209,7 +218,7 @@ exports.sendPushNotification = async (req, res, next) => {
             thread: req?.body?.data?.thread,
             profileImage: req?.body?.data?.profileImage,
             id: req?.body?.data?.id.toString(),
-            senderId: req.user.id.toString(),
+            senderId: req.user.id.toString()
             // actions: ["hello", "welcome"].toString(),
           },
           notification: {
@@ -229,12 +238,22 @@ exports.sendPushNotification = async (req, res, next) => {
           }
         }
       };
-
-      const result = sendUnscheduledNotification(notification_options);
-      res.status(200).send({
-        status: "success",
-        data: result
-      });
+      console.log(
+        "userFcmTokensOb.someoneSendMeMessage",
+        userFcmTokensOb.someoneSendMeMessage
+      );
+      if (userFcmTokensOb.someoneSendMeMessage === false) {
+        res.status(200).send({
+          status: "success",
+          data: {}
+        });
+      } else {
+        const result = sendUnscheduledNotification(notification_options);
+        res.status(200).send({
+          status: "success",
+          data: result
+        });
+      }
     } else {
       throw new Error("User's FCM token not found");
     }
@@ -285,9 +304,8 @@ exports.likeUser = async (req, res, next) => {
         to: parseInt(req.params.id)
       }
     };
-    // const alreadyLiked = await Like.findOne(clause);
-    if (!userExists) {
-      //alreadyLiked
+    const alreadyLiked = await Like.findOne(clause);
+    if (alreadyLiked) {
       throw new Error(messages.ALREADY_LIKED);
     } else {
       const likeObject = await Like.create(clause.where);
@@ -297,9 +315,6 @@ exports.likeUser = async (req, res, next) => {
         }
       });
       if (userFcmTokensOb) {
-        // userFcmTokensOb = userFcmTokensOb.map(function (user) {
-        //   return user["fcmToken"];
-        // });
         let notification_options = {
           regTokens: userFcmTokensOb.deviceToken,
           notificationMsg: {
@@ -312,7 +327,9 @@ exports.likeUser = async (req, res, next) => {
             }
           }
         };
-        const result = sendUnscheduledNotification(notification_options);
+        if (userFcmTokensOb.someoneSendMeMessage === true) {
+          var result = sendUnscheduledNotification(notification_options);
+        }
         console.log("result", result);
       }
 
@@ -322,8 +339,6 @@ exports.likeUser = async (req, res, next) => {
           from: parseInt(req.params.id)
         }
       });
-
-      console.log("matchmatch", match);
 
       res.status(200).send({
         status: "success",
@@ -389,32 +404,67 @@ exports.getListOfAllUsersLikedByMe = async (req, res, next) => {
                 model: UserPreference,
                 include: [
                   {
-                    model: RelationshipStatus,
-                    attributes: ["id", "name"]
+                    model: UserRelationship,
+                    include: [
+                      {
+                        model: RelationshipStatus,
+                        attributes: ["id", "name"]
+                      }
+                    ]
                   },
                   {
-                    model: BodyType,
-                    attributes: ["id", "name"]
+                    model: UserBodyTypes,
+                    include: [
+                      {
+                        model: BodyType,
+                        attributes: ["id", "name"]
+                      }
+                    ]
                   },
                   {
-                    model: Ethnicity,
-                    attributes: ["id", "name"]
+                    model: UserEthnicity,
+                    include: [
+                      {
+                        model: Ethnicity,
+                        attributes: ["id", "name"]
+                      }
+                    ]
                   },
                   {
-                    model: HairColor,
-                    attributes: ["id", "name"]
+                    model: UserHairColor,
+                    include: [
+                      {
+                        model: HairColor,
+                        attributes: ["id", "name"]
+                      }
+                    ]
                   },
                   {
-                    model: Education,
-                    attributes: ["id", "name"]
+                    model: UserEducations,
+                    include: [
+                      {
+                        model: Education,
+                        attributes: ["id", "name"]
+                      }
+                    ]
                   },
                   {
-                    model: Children,
-                    attributes: ["id", "name"]
+                    model: UserChildren,
+                    include: [
+                      {
+                        model: Children,
+                        attributes: ["id", "name"]
+                      }
+                    ]
                   },
                   {
-                    model: Occupation,
-                    attributes: ["id", "name"]
+                    model: UserOccupation,
+                    include: [
+                      {
+                        model: Occupation,
+                        attributes: ["id", "name"]
+                      }
+                    ]
                   },
                   {
                     model: UserTag,
@@ -491,32 +541,67 @@ exports.getListOfAllUsersWhoLikeMe = async (req, res, next) => {
                 model: UserPreference,
                 include: [
                   {
-                    model: RelationshipStatus,
-                    attributes: ["id", "name"]
+                    model: UserRelationship,
+                    include: [
+                      {
+                        model: RelationshipStatus,
+                        attributes: ["id", "name"]
+                      }
+                    ]
                   },
                   {
-                    model: BodyType,
-                    attributes: ["id", "name"]
+                    model: UserBodyTypes,
+                    include: [
+                      {
+                        model: BodyType,
+                        attributes: ["id", "name"]
+                      }
+                    ]
                   },
                   {
-                    model: Ethnicity,
-                    attributes: ["id", "name"]
+                    model: UserEthnicity,
+                    include: [
+                      {
+                        model: Ethnicity,
+                        attributes: ["id", "name"]
+                      }
+                    ]
                   },
                   {
-                    model: HairColor,
-                    attributes: ["id", "name"]
+                    model: UserHairColor,
+                    include: [
+                      {
+                        model: HairColor,
+                        attributes: ["id", "name"]
+                      }
+                    ]
                   },
                   {
-                    model: Education,
-                    attributes: ["id", "name"]
+                    model: UserEducations,
+                    include: [
+                      {
+                        model: Education,
+                        attributes: ["id", "name"]
+                      }
+                    ]
                   },
                   {
-                    model: Children,
-                    attributes: ["id", "name"]
+                    model: UserChildren,
+                    include: [
+                      {
+                        model: Children,
+                        attributes: ["id", "name"]
+                      }
+                    ]
                   },
                   {
-                    model: Occupation,
-                    attributes: ["id", "name"]
+                    model: UserOccupation,
+                    include: [
+                      {
+                        model: Occupation,
+                        attributes: ["id", "name"]
+                      }
+                    ]
                   },
                   {
                     model: UserTag,
@@ -567,32 +652,67 @@ exports.getListOfAllUsersWhoLikeMe = async (req, res, next) => {
           model: UserPreference,
           include: [
             {
-              model: RelationshipStatus,
-              attributes: ["id", "name"]
+              model: UserRelationship,
+              include: [
+                {
+                  model: RelationshipStatus,
+                  attributes: ["id", "name"]
+                }
+              ]
             },
             {
-              model: BodyType,
-              attributes: ["id", "name"]
+              model: UserBodyTypes,
+              include: [
+                {
+                  model: BodyType,
+                  attributes: ["id", "name"]
+                }
+              ]
             },
             {
-              model: Ethnicity,
-              attributes: ["id", "name"]
+              model: UserEthnicity,
+              include: [
+                {
+                  model: Ethnicity,
+                  attributes: ["id", "name"]
+                }
+              ]
             },
             {
-              model: HairColor,
-              attributes: ["id", "name"]
+              model: UserHairColor,
+              include: [
+                {
+                  model: HairColor,
+                  attributes: ["id", "name"]
+                }
+              ]
             },
             {
-              model: Education,
-              attributes: ["id", "name"]
+              model: UserEducations,
+              include: [
+                {
+                  model: Education,
+                  attributes: ["id", "name"]
+                }
+              ]
             },
             {
-              model: Children,
-              attributes: ["id", "name"]
+              model: UserChildren,
+              include: [
+                {
+                  model: Children,
+                  attributes: ["id", "name"]
+                }
+              ]
             },
             {
-              model: Occupation,
-              attributes: ["id", "name"]
+              model: UserOccupation,
+              include: [
+                {
+                  model: Occupation,
+                  attributes: ["id", "name"]
+                }
+              ]
             },
             {
               model: UserTag,
@@ -704,32 +824,67 @@ exports.getListOfAllUsersViewedByMe = async (req, res, next) => {
                 model: UserPreference,
                 include: [
                   {
-                    model: RelationshipStatus,
-                    attributes: ["id", "name"]
+                    model: UserRelationship,
+                    include: [
+                      {
+                        model: RelationshipStatus,
+                        attributes: ["id", "name"]
+                      }
+                    ]
                   },
                   {
-                    model: BodyType,
-                    attributes: ["id", "name"]
+                    model: UserBodyTypes,
+                    include: [
+                      {
+                        model: BodyType,
+                        attributes: ["id", "name"]
+                      }
+                    ]
                   },
                   {
-                    model: Ethnicity,
-                    attributes: ["id", "name"]
+                    model: UserEthnicity,
+                    include: [
+                      {
+                        model: Ethnicity,
+                        attributes: ["id", "name"]
+                      }
+                    ]
                   },
                   {
-                    model: HairColor,
-                    attributes: ["id", "name"]
+                    model: UserHairColor,
+                    include: [
+                      {
+                        model: HairColor,
+                        attributes: ["id", "name"]
+                      }
+                    ]
                   },
                   {
-                    model: Education,
-                    attributes: ["id", "name"]
+                    model: UserEducations,
+                    include: [
+                      {
+                        model: Education,
+                        attributes: ["id", "name"]
+                      }
+                    ]
                   },
                   {
-                    model: Children,
-                    attributes: ["id", "name"]
+                    model: UserChildren,
+                    include: [
+                      {
+                        model: Children,
+                        attributes: ["id", "name"]
+                      }
+                    ]
                   },
                   {
-                    model: Occupation,
-                    attributes: ["id", "name"]
+                    model: UserOccupation,
+                    include: [
+                      {
+                        model: Occupation,
+                        attributes: ["id", "name"]
+                      }
+                    ]
                   },
                   {
                     model: UserTag,
@@ -806,32 +961,67 @@ exports.getListOfAllUsersWhoViewedMe = async (req, res, next) => {
                 model: UserPreference,
                 include: [
                   {
-                    model: RelationshipStatus,
-                    attributes: ["id", "name"]
+                    model: UserRelationship,
+                    include: [
+                      {
+                        model: RelationshipStatus,
+                        attributes: ["id", "name"]
+                      }
+                    ]
                   },
                   {
-                    model: BodyType,
-                    attributes: ["id", "name"]
+                    model: UserBodyTypes,
+                    include: [
+                      {
+                        model: BodyType,
+                        attributes: ["id", "name"]
+                      }
+                    ]
                   },
                   {
-                    model: Ethnicity,
-                    attributes: ["id", "name"]
+                    model: UserEthnicity,
+                    include: [
+                      {
+                        model: Ethnicity,
+                        attributes: ["id", "name"]
+                      }
+                    ]
                   },
                   {
-                    model: HairColor,
-                    attributes: ["id", "name"]
+                    model: UserHairColor,
+                    include: [
+                      {
+                        model: HairColor,
+                        attributes: ["id", "name"]
+                      }
+                    ]
                   },
                   {
-                    model: Education,
-                    attributes: ["id", "name"]
+                    model: UserEducations,
+                    include: [
+                      {
+                        model: Education,
+                        attributes: ["id", "name"]
+                      }
+                    ]
                   },
                   {
-                    model: Children,
-                    attributes: ["id", "name"]
+                    model: UserChildren,
+                    include: [
+                      {
+                        model: Children,
+                        attributes: ["id", "name"]
+                      }
+                    ]
                   },
                   {
-                    model: Occupation,
-                    attributes: ["id", "name"]
+                    model: UserOccupation,
+                    include: [
+                      {
+                        model: Occupation,
+                        attributes: ["id", "name"]
+                      }
+                    ]
                   },
                   {
                     model: UserTag,
@@ -882,32 +1072,67 @@ exports.getListOfAllUsersWhoViewedMe = async (req, res, next) => {
           model: UserPreference,
           include: [
             {
-              model: RelationshipStatus,
-              attributes: ["id", "name"]
+              model: UserRelationship,
+              include: [
+                {
+                  model: RelationshipStatus,
+                  attributes: ["id", "name"]
+                }
+              ]
             },
             {
-              model: BodyType,
-              attributes: ["id", "name"]
+              model: UserBodyTypes,
+              include: [
+                {
+                  model: BodyType,
+                  attributes: ["id", "name"]
+                }
+              ]
             },
             {
-              model: Ethnicity,
-              attributes: ["id", "name"]
+              model: UserEthnicity,
+              include: [
+                {
+                  model: Ethnicity,
+                  attributes: ["id", "name"]
+                }
+              ]
             },
             {
-              model: HairColor,
-              attributes: ["id", "name"]
+              model: UserHairColor,
+              include: [
+                {
+                  model: HairColor,
+                  attributes: ["id", "name"]
+                }
+              ]
             },
             {
-              model: Education,
-              attributes: ["id", "name"]
+              model: UserEducations,
+              include: [
+                {
+                  model: Education,
+                  attributes: ["id", "name"]
+                }
+              ]
             },
             {
-              model: Children,
-              attributes: ["id", "name"]
+              model: UserChildren,
+              include: [
+                {
+                  model: Children,
+                  attributes: ["id", "name"]
+                }
+              ]
             },
             {
-              model: Occupation,
-              attributes: ["id", "name"]
+              model: UserOccupation,
+              include: [
+                {
+                  model: Occupation,
+                  attributes: ["id", "name"]
+                }
+              ]
             },
             {
               model: UserTag,
@@ -971,32 +1196,67 @@ exports.viewUser = async (req, res, next) => {
           model: UserPreference,
           include: [
             {
-              model: RelationshipStatus,
-              attributes: ["id", "name"]
+              model: UserRelationship,
+              include: [
+                {
+                  model: RelationshipStatus,
+                  attributes: ["id", "name"]
+                }
+              ]
             },
             {
-              model: BodyType,
-              attributes: ["id", "name"]
+              model: UserBodyTypes,
+              include: [
+                {
+                  model: BodyType,
+                  attributes: ["id", "name"]
+                }
+              ]
             },
             {
-              model: Ethnicity,
-              attributes: ["id", "name"]
+              model: UserEthnicity,
+              include: [
+                {
+                  model: Ethnicity,
+                  attributes: ["id", "name"]
+                }
+              ]
             },
             {
-              model: HairColor,
-              attributes: ["id", "name"]
+              model: UserHairColor,
+              include: [
+                {
+                  model: HairColor,
+                  attributes: ["id", "name"]
+                }
+              ]
             },
             {
-              model: Education,
-              attributes: ["id", "name"]
+              model: UserEducations,
+              include: [
+                {
+                  model: Education,
+                  attributes: ["id", "name"]
+                }
+              ]
             },
             {
-              model: Children,
-              attributes: ["id", "name"]
+              model: UserChildren,
+              include: [
+                {
+                  model: Children,
+                  attributes: ["id", "name"]
+                }
+              ]
             },
             {
-              model: Occupation,
-              attributes: ["id", "name"]
+              model: UserOccupation,
+              include: [
+                {
+                  model: Occupation,
+                  attributes: ["id", "name"]
+                }
+              ]
             },
             {
               model: UserTag,
@@ -1020,9 +1280,13 @@ exports.viewUser = async (req, res, next) => {
         to: parseInt(req.params.id)
       }
     };
+
     const alreadyViewed = await View.findOne(clause);
+
     if (!alreadyViewed) {
-      await View.create(clause.where);
+      if (userExists.showWhenViewSomeone === true) {
+        await View.create(clause.where);
+      }
     }
     res.status(200).send({
       status: "success",
@@ -1653,7 +1917,7 @@ exports.saveUserSearch = async (req, res, next) => {
         throw new Error("You are using duplicate search name.");
       } else {
         const createObject = { ...req.body, userId: req.user.id };
-        console.log("createObjectcreateObject",createObject)
+        console.log("createObjectcreateObject", createObject);
         const searchObject = await UserSearch.create(createObject);
         res.status(200).send({
           status: "success",
@@ -1679,7 +1943,7 @@ exports.getUserSearches = async (req, res, next) => {
       order: [["createdAt", "DESC"]]
     });
 
-    console.log("searches",searches)
+    console.log("searches", searches);
 
     res.status(200).send({
       status: "success",
@@ -1753,7 +2017,6 @@ exports.activateUserSearchById = async (req, res, next) => {
           id: req.params.id
         }
       });
-
 
       if (!userSearchExists) {
         throw new Error("User Search not found");
@@ -1835,6 +2098,21 @@ exports.getUserHistory = async (req, res, next) => {
     } else {
       throw new Error("UserSearch Id missing");
     }
+  } catch (error) {
+    return next(new APIError(error.message, status.BAD_REQUEST));
+  }
+};
+
+exports.getUserFaq = async (req, res, next) => {
+  try {
+    let FaqData = await Faq.findAll();
+
+    console.log("FaqDataFaqData", FaqData);
+
+    res.status(200).send({
+      data: FaqData,
+      status: "success"
+    });
   } catch (error) {
     return next(new APIError(error.message, status.BAD_REQUEST));
   }

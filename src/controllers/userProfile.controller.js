@@ -22,6 +22,13 @@ const catchAsync = require("../utils/catchAsync");
 const messages = require("../utils/constants");
 const jwt = require("jsonwebtoken");
 const { uploadFile } = require("../utils/fileUpload");
+const UserRelationship = require("../models/UserRelationship.model");
+const UserBodyTypes = require("../models/UserBodyType.model");
+const UserEducations = require("../models/UserEducation.model");
+const UserEthnicity = require("../models/UserEthnicity.model");
+const UserHairColor = require("../models/UserHairColor.model");
+const UserChildren = require("../models/UserChildren.model");
+const UserOccupation = require("../models/UserOccupation.model");
 
 exports.createProfile = catchAsync(async (req, res) => {
   let params = ({
@@ -383,6 +390,8 @@ exports.editProfile = catchAsync(async (req, res) => {
   console.log(req.user.id)
   console.log('**********************************') 
 
+  console.log('userpreferenceUpdtedresult',params)
+
   try {
     await User.update({name: req.body.name}, {
       where: {
@@ -420,7 +429,7 @@ exports.editProfile = catchAsync(async (req, res) => {
       );
     }
 
-console.log('userpreferenceUpdtedresult',params, userpreferenceUpdtedresult)
+
     if(Array.isArray(req.body.photos) && req.body.photos.length > 0) {
       req.body.photos.forEach((photo, index) => {
         UserPhoto.create({
@@ -471,6 +480,9 @@ console.log('userpreferenceUpdtedresult',params, userpreferenceUpdtedresult)
         },
       ],
     });
+    console.log('useruser', JSON.stringify(user))
+
+    
 
     res.status(200).send({
       status: "success",
@@ -596,45 +608,79 @@ exports.userData = async (req, res, next) => {
         model: UserPreference,
         include: [
           {
-            model: RelationshipStatus,
-            attributes: ["id", "name"],
+            model: UserRelationship,
+            include: [
+              {
+                model: RelationshipStatus,
+                attributes: ["id", "name"]
+              }
+            ]
           },
           {
-            model: BodyType,
-            attributes: ["id", "name"],
+            model: UserBodyTypes,
+            include: [
+              {
+                model: BodyType,
+                attributes: ["id", "name"]
+              }
+            ]
           },
           {
-            model: Ethnicity,
-            attributes: ["id", "name"],
+            model: UserEthnicity,
+            include: [
+              {
+                model: Ethnicity,
+                attributes: ["id", "name"]
+              }
+            ]
           },
           {
-            model: HairColor,
-            attributes: ["id", "name"],
+            model: UserHairColor,
+            include: [
+              {
+                model: HairColor,
+                attributes: ["id", "name"]
+              }
+            ]
           },
           {
-            model: Education,
-            attributes: ["id", "name"],
+            model: UserEducations,
+            include: [
+              {
+                model: Education,
+                attributes: ["id", "name"]
+              }
+            ]
           },
           {
-            model: Children,
-            attributes: ["id", "name"],
+            model: UserChildren,
+            include: [
+              {
+                model: Children,
+                attributes: ["id", "name"]
+              }
+            ]
           },
           {
-            model: Occupation,
-            attributes: ["id", "name"],
+            model: UserOccupation,
+            include: [
+              {
+                model: Occupation,
+                attributes: ["id", "name"]
+              }
+            ]
           },
           {
             model: UserTag,
             include: [
               {
                 model: Tag,
-                attributes: ["id", "name"],
-              },
-            ],
-          },
-          
-        ],
-      },
+                attributes: ["id", "name"]
+              }
+            ]
+          }
+        ]
+      }
     ],
     });
     res.status(200).send({
