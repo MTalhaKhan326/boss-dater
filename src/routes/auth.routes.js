@@ -51,7 +51,7 @@ authRouter.route("/facebook-login").post(facebookLogin);
 authRouter.route("/apple-login").post(appleLogin);
 authRouter
   .route("/update-social-login")
-  .post(authJwt, checkDuplicateEmail, updateForSocialLogin);
+  .post(authJwt, updateForSocialLogin); //checkDuplicateEmail
 
 //phone number verification
 authRouter.route("/send-code").post(sendCode);

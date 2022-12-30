@@ -200,8 +200,13 @@ exports.sendPushNotification = async (req, res, next) => {
         id: req.body.data.id
       }
     });
+    const clause = {
+      from: parseInt(req.params.id),
+      against: req.user.id
+    };
+    const alreadyBlocked = await Block.findOne({ where: clause });
 
-    console.log("userFcmTokensOb", userFcmTokensOb);
+    console.log("alreadyBlockedalreadyBlocked", alreadyBlocked);
 
     if (userFcmTokensOb) {
       console.log(
@@ -242,7 +247,9 @@ exports.sendPushNotification = async (req, res, next) => {
         "userFcmTokensOb.someoneSendMeMessage",
         userFcmTokensOb.someoneSendMeMessage
       );
-      if (userFcmTokensOb.someoneSendMeMessage === false) {
+      if (
+        userFcmTokensOb.someoneSendMeMessage === false && alreadyBlocked
+      ) {
         res.status(200).send({
           status: "success",
           data: {}

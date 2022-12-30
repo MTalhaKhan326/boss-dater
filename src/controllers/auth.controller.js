@@ -72,7 +72,7 @@ exports.register = catchAsync(async (req, res, next) => {
       new APIError(messages.INCORRECT_EMAIL_OR_PASSWORD, status.UNAUTHORIZED)
     );
   } else {
-    user = await sequelize.transaction(async t => {
+    user = await sequelize.transaction(async (t) => {
       const user = await User.create(
         {
           gender,
@@ -308,11 +308,11 @@ exports.login = catchAsync(async (req, res, next) => {
     let preferenceValues = Object.assign({}, user.UserPreference?.dataValues);
 
     let notNullProfileValues = Object.keys(profileValues).filter(
-      x => profileValues[x] !== null
+      (x) => profileValues[x] !== null
     ).length;
 
     let notNullPreferenceValues = Object.keys(preferenceValues).filter(
-      x => preferenceValues[x] !== null
+      (x) => preferenceValues[x] !== null
     ).length;
     if (notNullProfileValues > 5) {
       percentage = percentage + PROFILE_PERCENTAGE;
@@ -469,7 +469,7 @@ exports.googleLogin = catchAsync(async (req, res, next) => {
       where: {
         email: email
       }
-    }).then(user => {
+    }).then((user) => {
       if (user)
         return next(
           new APIError(messages.EMAIL_ALREADY_EXIST, status.BAD_REQUEST)
@@ -594,8 +594,8 @@ exports.sendCode = catchAsync(async (req, res, next) => {
     let codeSend = await client.verify
       .services(verifySid)
       .verifications.create({ to: `+${phoneNumber}`, channel: "sms" })
-      .then(message => console.log(message.status))
-      .catch(err => console.log("error: ", err));
+      .then((message) => console.log(message.status))
+      .catch((err) => console.log("error: ", err));
 
     if (codeSend) {
       res.status(status.OK).json({
@@ -619,7 +619,7 @@ exports.verifyCode = catchAsync(async (req, res, next) => {
   const check = await client.verify
     .services(process.env.VERIFY_SERVICE_SID)
     .verificationChecks.create({ to: `+${phoneNumber}`, code: code })
-    .catch(e => {
+    .catch((e) => {
       console.log("eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee" + e);
       res.status(406).send({
         message: "Invalid code"
@@ -849,7 +849,17 @@ exports.verifyPhoneNumberUserNameExist = async (req, res, next) => {
 
 exports.updateForSocialLogin = async (req, res, next) => {
   try {
-    let { body: { gender, userName, phoneNumber, email, birthDate } } = req;
+    let {
+      body: { gender, userName, phoneNumber, email, birthDate }
+    } = req;
+    console.log(
+      "gender, userName, phoneNumber, email, birthDate",
+      gender,
+      userName,
+      phoneNumber,
+      email,
+      birthDate
+    );
     let user = await User.findOne({
       where: { id: req.user.id },
       include: [
@@ -891,32 +901,67 @@ exports.updateForSocialLogin = async (req, res, next) => {
           model: UserPreference,
           include: [
             {
-              model: RelationshipStatus,
-              attributes: ["id", "name"]
+              model: UserRelationship,
+              include: [
+                {
+                  model: RelationshipStatus,
+                  attributes: ["id", "name"]
+                }
+              ]
             },
             {
-              model: BodyType,
-              attributes: ["id", "name"]
+              model: UserBodyTypes,
+              include: [
+                {
+                  model: BodyType,
+                  attributes: ["id", "name"]
+                }
+              ]
             },
             {
-              model: Ethnicity,
-              attributes: ["id", "name"]
+              model: UserEthnicity,
+              include: [
+                {
+                  model: Ethnicity,
+                  attributes: ["id", "name"]
+                }
+              ]
             },
             {
-              model: HairColor,
-              attributes: ["id", "name"]
+              model: UserHairColor,
+              include: [
+                {
+                  model: HairColor,
+                  attributes: ["id", "name"]
+                }
+              ]
             },
             {
-              model: Education,
-              attributes: ["id", "name"]
+              model: UserEducations,
+              include: [
+                {
+                  model: Education,
+                  attributes: ["id", "name"]
+                }
+              ]
             },
             {
-              model: Children,
-              attributes: ["id", "name"]
+              model: UserChildren,
+              include: [
+                {
+                  model: Children,
+                  attributes: ["id", "name"]
+                }
+              ]
             },
             {
-              model: Occupation,
-              attributes: ["id", "name"]
+              model: UserOccupation,
+              include: [
+                {
+                  model: Occupation,
+                  attributes: ["id", "name"]
+                }
+              ]
             },
             {
               model: UserTag,
@@ -937,11 +982,11 @@ exports.updateForSocialLogin = async (req, res, next) => {
     let preferenceValues = Object.assign({}, user.UserPreference.dataValues);
 
     let notNullProfileValues = Object.keys(profileValues).filter(
-      x => profileValues[x] !== null
+      (x) => profileValues[x] !== null
     ).length;
 
     let notNullPreferenceValues = Object.keys(preferenceValues).filter(
-      x => preferenceValues[x] !== null
+      (x) => preferenceValues[x] !== null
     ).length;
     if (notNullProfileValues > 5) {
       percentage = percentage + PROFILE_PERCENTAGE;
@@ -960,7 +1005,7 @@ exports.updateForSocialLogin = async (req, res, next) => {
     await User.update(
       {
         gender,
-        userName,
+        name: userName,
         phoneNumber,
         email,
         birthDate,
@@ -996,7 +1041,7 @@ exports.logout = catchAsync(async (req, res, next) => {
     );
 
     res.status(status.OK).json({
-      status: "success",
+      status: "success"
     });
   } catch (err) {
     return next(new APIError(err.message, status[500]));
