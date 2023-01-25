@@ -1,6 +1,5 @@
 const { Model, DataTypes } = require("sequelize");
 const sequelize = require("../config/db.config");
-const HairColor = require("./HairColor.model");
 
 class UserSearch extends Model {
   //Functions comes here
@@ -188,26 +187,3 @@ UserSearch.init(
 );
 
 module.exports = UserSearch;
-
-// {
-//   "gps":true,
-//   "otherLocation":true,
-//   "locationByCityName":true
-//   "occupations": [1,2],
-//   "jobTitle": "Software Egnineer",
-//   "minDistance":10,
-//   "maxDistance":1001,
-//   "minHeight": 100,
-//   "maxHeight": 300,
-//   "minNetWorth": 100
-//   "maxNetWorth":10000000
-//   "minAge": 25,
-//   "maxAge": 60,
-//   "childrenIds": [1,2],
-//   "educationIds":[3,4],
-//   "HairColor": [5,6],
-//   "bodyTypesIds": [3,6],
-
-//   "showMemberSeekengIds":[1],
-//   "doNotShowMemberSeekings":[3]
-// }

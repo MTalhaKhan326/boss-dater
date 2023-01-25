@@ -515,7 +515,8 @@ exports.googleLogin = catchAsync(async (req, res, next) => {
 exports.facebookLogin = catchAsync(async (req, res, next) => {
   const { facebookId } = req.body;
 
-  let user = await User.findOne({ where: { facebookId } });
+  let user = await User.findOne({ where: { facebookId:facebookId } });
+  console.log("useruser",user)
   if (!user) {
     user = await User.create({
       facebookId
@@ -546,6 +547,7 @@ exports.facebookLogin = catchAsync(async (req, res, next) => {
   }
 
   var token = user.getJWTToken();
+
   res.status(200).send({
     status: messages.SUCCESS,
     user: user,

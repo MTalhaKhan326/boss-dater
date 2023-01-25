@@ -200,13 +200,13 @@ exports.sendPushNotification = async (req, res, next) => {
         id: req.body.data.id
       }
     });
+
     const clause = {
-      from: parseInt(req.params.id),
+      from: parseInt(req.body.data.id),
       against: req.user.id
     };
     const alreadyBlocked = await Block.findOne({ where: clause });
-
-    console.log("alreadyBlockedalreadyBlocked", alreadyBlocked);
+    console.log("userFcmTokensOb", alreadyBlocked);
 
     if (userFcmTokensOb) {
       console.log(
@@ -224,12 +224,11 @@ exports.sendPushNotification = async (req, res, next) => {
             profileImage: req?.body?.data?.profileImage,
             id: req?.body?.data?.id.toString(),
             senderId: req.user.id.toString()
-            // actions: ["hello", "welcome"].toString(),
           },
           notification: {
             title: req?.body?.data?.name,
             body: req?.body?.data?.message.toString(),
-            image: req?.body?.data?.profileImage,
+            image: req?.body?.data?.profileImage.toString(),
             actions: [
               {
                 title: "Like",
@@ -248,17 +247,18 @@ exports.sendPushNotification = async (req, res, next) => {
         userFcmTokensOb.someoneSendMeMessage
       );
       if (
-        userFcmTokensOb.someoneSendMeMessage === false && alreadyBlocked
+        userFcmTokensOb.someoneSendMeMessage === true &&
+        alreadyBlocked === null
       ) {
-        res.status(200).send({
-          status: "success",
-          data: {}
-        });
-      } else {
         const result = sendUnscheduledNotification(notification_options);
         res.status(200).send({
           status: "success",
           data: result
+        });
+      } else {
+        res.status(200).send({
+          status: "success",
+          data: {}
         });
       }
     } else {
@@ -1640,74 +1640,7 @@ exports.showLatestUser = async (req, res, next) => {
 
 exports.showNearByUser = async (req, res, next) => {
   try {
-    // const pool = new Pool({
-    //   user: 'postgres',
-    //   host: 'localhost',
-    //   database: 'boss-dater-backend',
-    //   password: 'admin',
-    //   port: 5432,
-    // })
-    // pool.query('SELECT NOW()', (err, res) => {
-    //   console.log(err, res)
-    //   pool.end()
-    // })
-    //   let client = new Client({
-    //     user: 'postgres',
-    //     host: 'localhost',
-    //     database: 'boss-dater-backend',
-    //     password: 'admin',
-    //     port: 5432,
-    // })
-    //   client.connect()
-    // client.query('SELECT NOW()', (err, res) => {
-    //   console.log(err, res)
-    //   console.log("asdasd")
-
-    // })
-
-    // const userLatlng = ["31.465564", "74.417984"]
-    // const radius = 10
-
-    // const _q = `SELECT * FROM "UserProfiles" WHERE ( $1 <= ( latitude + (0.00898315284 * $3) ) ) AND ( $1 >= ( latitude - (0.00898315284 * $3) ) ) AND ( $2 <= ( longitude + (0.00898315284 * $3) ) ) AND ( $2 >= ( longitude - (0.00898315284 * $3) ) )`
-
-    // const query = {
-    //   // give the query a unique name
-    //   name: 'fetch-user',
-    //   // text: 'SELECT * FROM "Users" WHERE id > $1 limit $2',
-    //   text: _q,
-    //   values: [userLatlng[0], userLatlng[1], radius],
-    // }
-    // callback
-    // client.query(query, (err, res) => {
-    //   if (err) {
-    //     console.log(err.stack)
-    //   } else {
-    //     console.log(res.rows[0])
-    //   }
-    // })
-    // promise
-    // let myres = await client
-    //   .query(query)
-    // .then(res => console.log(res.rows[0]))
-    // .catch(e => console.error(e.stack))
-
-    //   client.end()
-    // let res1 = "hhh"
-    // return res.send({
-    //   "rows": myres
-    //   // "hello": await User.findAll()
-    // })
-
-    // return res.send({
-    //   hello: "world",
-    //   query: req.query
-    // })
-
     let { latitude, longitude } = req.query;
-    // return res.send({
-    //   lat: latitude,
-    //   lng: longitude
-    // })
     let loggedInUser = await User.findOne({
       where: { id: req.user.id },
       include: [
@@ -1755,6 +1688,7 @@ exports.showNearByUser = async (req, res, next) => {
         model: UserPhoto
       }
     ];
+
     let wherePreference = {};
     const prefrenceWhere = await getUserPreferenceCondition(req);
     if (prefrenceWhere) {
@@ -1764,6 +1698,9 @@ exports.showNearByUser = async (req, res, next) => {
     let users = await User.findAll({
       where: where,
       include: [
+        {
+          model: UserPhoto
+        },
         {
           where: wherePreference,
           model: UserProfile,
@@ -1884,7 +1821,6 @@ exports.showRecentlyActiveUser = async (req, res, next) => {
 
 // Create user search here
 //accepts post request with params
-
 exports.saveUserSearch = async (req, res, next) => {
   try {
     if (req.params.id) {
